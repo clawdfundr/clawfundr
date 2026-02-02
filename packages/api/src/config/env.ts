@@ -34,6 +34,14 @@ const envSchema = z.object({
 
     // Security
     API_KEY_SALT_ROUNDS: z.string().default('10'),
+
+    // Email (optional, used to send API keys on registration)
+    SMTP_HOST: z.string().optional(),
+    SMTP_PORT: z.string().default('587'),
+    SMTP_SECURE: z.enum(['true', 'false']).default('false'),
+    SMTP_USER: z.string().optional(),
+    SMTP_PASS: z.string().optional(),
+    SMTP_FROM: z.string().email('SMTP_FROM must be a valid email address').optional(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

@@ -41,7 +41,8 @@
         "fastify": "^4.26.0",
         "pg": "^8.11.3",
         "viem": "^2.7.0",
-        "zod": "^3.22.4"
+        "zod": "^3.22.4",
+        "nodemailer": "^6.9.16"
     },
     "devDependencies": {
         "@types/bcrypt": "^5.0.2",

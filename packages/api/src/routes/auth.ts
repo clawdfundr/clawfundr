@@ -4,6 +4,7 @@ import { randomBytes } from 'crypto';
 import bcrypt from 'bcrypt';
 import { createUser, createApiKey, getUserApiKeys, revokeApiKey } from '../db/client';
 import { getEnvConfig } from '../config/env';
+import { isEmailConfigured, sendApiKeyEmail } from '../services/email';
 
 const registerSchema = z.object({
     email: z.string().email('Invalid email address').optional(),
@@ -34,6 +35,7 @@ export async function authRoutes(fastify: FastifyInstance) {
                     properties: {
                         userId: { type: 'string' },
                         apiKey: { type: 'string' },
+                        emailSent: { type: 'boolean' },
                         message: { type: 'string' },
                     },
                 },
@@ -50,6 +52,14 @@ export async function authRoutes(fastify: FastifyInstance) {
             }
 
             try {
+                if (result.data.email && !isEmailConfigured()) {
+                    return reply.status(500).send({
+                        error: 'Email Service Not Configured',
+                        message:
+                            'Registration with email is unavailable because SMTP is not configured on this server.',
+                    });
+                }
+
                 // Create user
                 const user = await createUser();
 
@@ -68,11 +78,31 @@ export async function authRoutes(fastify: FastifyInstance) {
                     : 'Default API Key';
                 await createApiKey(user.id, keyHash, label);
 
+                let emailSent = false;
+                if (result.data.email) {
+                    const emailResult = await sendApiKeyEmail({
+                        to: result.data.email,
+                        apiKey: apiKeyWithPrefix,
+                        userId: user.id,
+                    });
+
+                    if (!emailResult.sent) {
+                        return reply.status(500).send({
+                            error: 'Email Delivery Failed',
+                            message: `User created, but email could not be sent: ${emailResult.reason}`,
+                        });
+                    }
+
+                    emailSent = true;
+                }
+
                 return reply.send({
                     userId: user.id,
                     apiKey: apiKeyWithPrefix,
-                    message:
-                        'Registration successful! Save your API key securely - it will not be shown again.',
+                    emailSent,
+                    message: emailSent
+                        ? 'Registration successful! API key sent to your email and returned once in this response.'
+                        : 'Registration successful! Save your API key securely - it will not be shown again.',
                 });
             } catch (error) {
                 console.error('Error during registration:', error);

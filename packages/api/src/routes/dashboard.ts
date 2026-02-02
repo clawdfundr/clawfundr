@@ -457,7 +457,7 @@ const dashboardHtml = `<!doctype html>
         </div>
         <div class="field">
           <label for="email">Email (optional)</label>
-          <input id="email" placeholder="alice@example.com" />
+          <input id="email" type="email" placeholder="alice@example.com" />
         </div>
       </div>
       <div class="btn-row">
@@ -598,9 +598,14 @@ const dashboardHtml = `<!doctype html>
     document.getElementById('registerBtn').onclick = async function () {
       try {
         setStatus('[run] registering user...', false);
+        const emailValue = emailInput.value.trim();
+        if (emailValue && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
+          throw new Error('Please enter a valid email address.');
+        }
+
         const body = {
           name: nameInput.value.trim() || undefined,
-          email: emailInput.value.trim() || undefined,
+          email: emailValue || undefined,
         };
         const data = await request('/v1/auth/register', {
           method: 'POST',
@@ -613,7 +618,11 @@ const dashboardHtml = `<!doctype html>
         }
 
         setOutput(data || '[ok] register complete');
-        setStatus('[ok] registered. API key stored in this browser.', false);
+        if (data && data.emailSent) {
+          setStatus('[ok] registered. API key sent to email and stored in this browser.', false);
+        } else {
+          setStatus('[ok] registered. API key stored in this browser.', false);
+        }
       } catch (err) {
         setStatus('[error] ' + err.message, true);
       }
