@@ -2,7 +2,7 @@ import * as readline from 'readline';
 import chalk from 'chalk';
 import { config } from 'dotenv';
 import { Agent } from './agent';
-import { getEnvConfig, validateEnvironment } from './config';
+import { getEnvConfig, validateEnvironment } from './config/env';
 import { ensureConfigured } from './config/setup';
 
 config();
