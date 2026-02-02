@@ -9,6 +9,16 @@ loadDotenv();
  */
 const envSchema = z.object({
     CLAUDE_API_KEY: z.string().min(1, 'CLAUDE_API_KEY is required'),
+    CLAWFUNDR_API_URL: z
+        .string()
+        .url('CLAWFUNDR_API_URL must be a valid URL')
+        .default('https://api.clawfundr.xyz'),
+    CLAWFUNDR_API_KEY: z
+        .string()
+        .regex(
+            /^claw_[a-fA-F0-9]{64}$/,
+            'CLAWFUNDR_API_KEY must be in format claw_<64 hex chars>'
+        ),
     BASE_RPC_URL: z.string().url('BASE_RPC_URL must be a valid URL').default('https://mainnet.base.org'),
     WALLET_ADDRESS: z.string().optional(),
     BASESCAN_API_KEY: z.string().optional(),

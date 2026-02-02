@@ -57,7 +57,13 @@ export async function generateEnvExample(targetDir: string): Promise<void> {
     }
 
     const envContent = `# Anthropic API Key for Claude
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
+CLAUDE_API_KEY=your_anthropic_api_key_here
+
+# Clawfundr Public API URL
+CLAWFUNDR_API_URL=https://api.clawfundr.xyz
+
+# Clawfundr Public API Key (Bearer token)
+CLAWFUNDR_API_KEY=your_clawfundr_api_key_here
 
 # Base Chain RPC URL (default: public RPC)
 BASE_RPC_URL=https://mainnet.base.org
