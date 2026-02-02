@@ -12,6 +12,7 @@ import { walletRoutes } from './routes/wallets';
 import { portfolioRoutes } from './routes/portfolio';
 import { txRoutes } from './routes/tx';
 import { x402Routes } from './routes/x402';
+import { dashboardRoutes } from './routes/dashboard';
 
 /**
  * Create and configure Fastify server
@@ -82,6 +83,7 @@ export async function createServer(): Promise<FastifyInstance> {
     await fastify.register(portfolioRoutes);
     await fastify.register(txRoutes);
     await fastify.register(x402Routes);
+    await fastify.register(dashboardRoutes);
 
     // Error handler
     fastify.setErrorHandler((error, request, reply) => {
@@ -142,6 +144,7 @@ async function start() {
 ⚡ Rate limit: ${config.RATE_LIMIT_MAX} req/${parseInt(config.RATE_LIMIT_WINDOW) / 1000}s
 
 Endpoints:
+  GET  /dashboard
   GET  /health
   POST /v1/auth/register
   POST /v1/auth/keys
