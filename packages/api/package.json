@@ -1,0 +1,59 @@
+{
+    "name": "clawfundr-api",
+    "version": "0.1.0",
+    "description": "Multi-tenant Public API for Clawfundr - Non-custodial Base chain banker",
+    "main": "dist/server.js",
+    "type": "commonjs",
+    "scripts": {
+        "dev": "tsx watch src/server.ts",
+        "build": "tsc",
+        "start": "node dist/server.js",
+        "test": "vitest",
+        "test:unit": "vitest run tests/unit",
+        "test:integration": "vitest run tests/integration",
+        "lint": "eslint src --ext .ts",
+        "format": "prettier --write \"src/**/*.ts\"",
+        "migrate": "tsx scripts/migrate.ts",
+        "bootstrap": "tsx scripts/bootstrap.ts",
+        "clean": "rimraf dist"
+    },
+    "keywords": [
+        "clawfundr",
+        "api",
+        "base-chain",
+        "non-custodial",
+        "multi-tenant",
+        "crypto",
+        "defi"
+    ],
+    "author": "",
+    "license": "MIT",
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "dependencies": {
+        "@anthropic-ai/sdk": "^0.20.0",
+        "@fastify/cors": "^8.5.0",
+        "@fastify/helmet": "^11.1.1",
+        "@fastify/rate-limit": "^9.1.0",
+        "bcrypt": "^5.1.1",
+        "dotenv": "^16.4.0",
+        "fastify": "^4.26.0",
+        "pg": "^8.11.3",
+        "viem": "^2.7.0",
+        "zod": "^3.22.4"
+    },
+    "devDependencies": {
+        "@types/bcrypt": "^5.0.2",
+        "@types/node": "^20.11.5",
+        "@types/pg": "^8.11.0",
+        "@typescript-eslint/eslint-plugin": "^6.19.0",
+        "@typescript-eslint/parser": "^6.19.0",
+        "eslint": "^8.56.0",
+        "prettier": "^3.2.4",
+        "rimraf": "^5.0.5",
+        "tsx": "^4.7.0",
+        "typescript": "^5.3.3",
+        "vitest": "^1.2.0"
+    }
+}

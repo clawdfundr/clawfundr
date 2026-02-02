@@ -1,0 +1,66 @@
+{
+    "version": "1.0",
+    "description": "Clawfundr AI Banker Agent Policy Configuration",
+    "chainAllowlist": [
+        8453
+    ],
+    "tokenAllowlist": [
+        {
+            "symbol": "USDC",
+            "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+            "decimals": 6,
+            "description": "USD Coin on Base"
+        },
+        {
+            "symbol": "WETH",
+            "address": "0x4200000000000000000000000000000000000006",
+            "decimals": 18,
+            "description": "Wrapped Ether on Base"
+        }
+    ],
+    "merchantAllowlistDomains": [],
+    "recipientAllowlist": [],
+    "caps": {
+        "perPayment": {
+            "enabled": true,
+            "maxUsd": 1000,
+            "description": "Maximum USD value per single payment"
+        },
+        "daily": {
+            "enabled": true,
+            "maxUsd": 5000,
+            "description": "Maximum USD value per 24-hour period"
+        }
+    },
+    "slippageCapBps": 100,
+    "targetStableRatio": 0.5,
+    "maxExposurePerAsset": 0.3,
+    "rules": {
+        "transaction_approval": {
+            "enabled": true,
+            "description": "All transactions require explicit user approval"
+        },
+        "private_key_exposure": {
+            "enabled": true,
+            "description": "Private keys must NEVER be exposed to LLM context"
+        },
+        "fund_advice": {
+            "risk_profiles": [
+                "conservative",
+                "moderate",
+                "aggressive"
+            ],
+            "default_profile": "moderate"
+        }
+    },
+    "skills": {
+        "enabled": [
+            "balance-check",
+            "transaction-history",
+            "fund-advice",
+            "transaction-decoder",
+            "send-transaction",
+            "x402-payment"
+        ]
+    }
+}

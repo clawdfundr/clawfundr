@@ -1,0 +1,45 @@
+{
+    "name": "my-clawfundr",
+    "version": "0.1.0",
+    "description": "Clawfundr AI Banker Agent - Terminal-only interface for EVM Base Chain",
+    "main": "dist/index.js",
+    "scripts": {
+        "dev": "tsx watch src/index.ts",
+        "build": "tsc",
+        "start": "node dist/index.js",
+        "test": "vitest",
+        "lint": "eslint src --ext .ts",
+        "clean": "rimraf dist"
+    },
+    "keywords": [
+        "clawfundr",
+        "ai",
+        "banker",
+        "evm",
+        "base-chain"
+    ],
+    "author": "",
+    "license": "MIT",
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "dependencies": {
+        "@anthropic-ai/sdk": "^0.20.0",
+        "better-sqlite3": "^9.4.0",
+        "viem": "^2.7.0",
+        "dotenv": "^16.4.0",
+        "chalk": "^4.1.2",
+        "zod": "^3.22.4"
+    },
+    "devDependencies": {
+        "@types/better-sqlite3": "^7.6.9",
+        "@types/node": "^20.11.5",
+        "@typescript-eslint/eslint-plugin": "^6.19.0",
+        "@typescript-eslint/parser": "^6.19.0",
+        "eslint": "^8.56.0",
+        "rimraf": "^5.0.5",
+        "tsx": "^4.7.0",
+        "typescript": "^5.3.3",
+        "vitest": "^1.2.0"
+    }
+}

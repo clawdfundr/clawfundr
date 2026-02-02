@@ -1,0 +1,45 @@
+{
+    "name": "clawfundr",
+    "version": "0.1.0",
+    "description": "NPX installer for Clawfundr - Terminal-only AI banker agent for EVM Base Chain",
+    "main": "dist/index.js",
+    "bin": {
+        "clawfundr": "dist/index.js"
+    },
+    "files": [
+        "dist",
+        "templates"
+    ],
+    "scripts": {
+        "build": "tsc && node scripts/add-shebang.js",
+        "clean": "rimraf dist",
+        "test": "node dist/index.js --help"
+    },
+    "keywords": [
+        "clawfundr",
+        "ai",
+        "banker",
+        "evm",
+        "base-chain",
+        "terminal",
+        "cli",
+        "npx"
+    ],
+    "author": "",
+    "license": "MIT",
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "dependencies": {
+        "chalk": "^4.1.2",
+        "fs-extra": "^11.2.0",
+        "prompts": "^2.4.2"
+    },
+    "devDependencies": {
+        "@types/fs-extra": "^11.0.4",
+        "@types/node": "^20.11.5",
+        "@types/prompts": "^2.4.9",
+        "rimraf": "^5.0.5",
+        "typescript": "^5.3.3"
+    }
+}

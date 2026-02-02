@@ -1,0 +1,28 @@
+{
+  "name": "clawfundr-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Clawfundr - Terminal-only AI banker agent for EVM Base Chain",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "clean": "npm run clean --workspaces --if-present",
+    "cli:build": "npm run build -w packages/cli",
+    "cli:test": "npm run test -w packages/cli"
+  },
+  "keywords": [
+    "ai",
+    "banker",
+    "evm",
+    "base-chain",
+    "terminal",
+    "cli"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

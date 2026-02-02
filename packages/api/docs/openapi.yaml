@@ -1,0 +1,430 @@
+openapi: 3.0.3
+info:
+  title: Clawfundr Public API
+  description: |
+    Multi-tenant, non-custodial REST API for Base chain wallet management and AI-powered banking.
+    
+    ## Authentication
+    All endpoints (except `/health`) require API key authentication via Bearer token:
+    ```
+    Authorization: Bearer claw_your_api_key_here
+    ```
+    
+    ## Non-Custodial Design
+    This API **never** handles private keys. For transaction execution:
+    1. Request unsigned transaction from API
+    2. Sign transaction client-side with your wallet
+    3. Broadcast signed transaction via API or directly to Base chain
+    
+    ## Rate Limiting
+    - 100 requests per minute per API key
+    - 1000 requests per minute per IP
+    
+  version: 0.1.0
+  contact:
+    name: Clawfundr Support
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+  - url: https://api.clawfundr.com
+    description: Production
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Wallets
+    description: Wallet management
+  - name: Portfolio
+    description: Balance and portfolio queries
+  - name: Transactions
+    description: Transaction broadcasting
+  - name: x402
+    description: HTTP 402 payment automation
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Check if the API is running
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  timestamp:
+                    type: string
+                    format: date-time
+                  uptime:
+                    type: number
+                    example: 12345.67
+
+  /v1/wallets:
+    post:
+      tags:
+        - Wallets
+      summary: Register a wallet
+      description: Register a wallet address to your account
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - address
+              properties:
+                address:
+                  type: string
+                  pattern: '^0x[a-fA-F0-9]{40}$'
+                  example: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb'
+                label:
+                  type: string
+                  example: 'My Main Wallet'
+      responses:
+        '200':
+          description: Wallet registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wallet'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      tags:
+        - Wallets
+      summary: List wallets
+      description: Get all wallets registered to your account
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of wallets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  wallets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Wallet'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/portfolio:
+    get:
+      tags:
+        - Portfolio
+      summary: Get portfolio
+      description: Get token balances for a wallet
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: walletId
+          in: query
+          description: Wallet ID (UUID)
+          schema:
+            type: string
+            format: uuid
+        - name: address
+          in: query
+          description: Wallet address (alternative to walletId)
+          schema:
+            type: string
+            pattern: '^0x[a-fA-F0-9]{40}$'
+      responses:
+        '200':
+          description: Portfolio data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Portfolio'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/tx/broadcast:
+    post:
+      tags:
+        - Transactions
+      summary: Broadcast signed transaction
+      description: Broadcast a signed transaction to Base chain
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - signedTx
+              properties:
+                signedTx:
+                  type: string
+                  pattern: '^0x[a-fA-F0-9]+$'
+                  example: '0x02f8...'
+      responses:
+        '200':
+          description: Transaction broadcasted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  txHash:
+                    type: string
+                    example: '0xabc123...'
+                  status:
+                    type: string
+                    example: 'pending'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/x402/propose:
+    post:
+      tags:
+        - x402
+      summary: Propose x402 payment
+      description: |
+        Fetch a resource and propose payment if 402 response is received.
+        Returns a proposal ID that can be used to execute the payment.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  example: 'https://api.example.com/premium-data'
+      responses:
+        '200':
+          description: Payment proposal created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/X402Proposal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/x402/execute:
+    post:
+      tags:
+        - x402
+      summary: Execute x402 payment
+      description: |
+        Get unsigned transaction for a proposed x402 payment.
+        You must sign this transaction client-side and broadcast it.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - proposalId
+              properties:
+                proposalId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Unsigned transaction returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  unsignedTx:
+                    $ref: '#/components/schemas/UnsignedTransaction'
+                  instructions:
+                    type: string
+                    example: 'Sign this transaction with your wallet and POST to /v1/tx/broadcast'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API Key
+      description: 'API key with format: claw_...'
+
+  schemas:
+    Wallet:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        address:
+          type: string
+          example: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb'
+        label:
+          type: string
+          nullable: true
+          example: 'My Main Wallet'
+        chainId:
+          type: integer
+          example: 8453
+        createdAt:
+          type: string
+          format: date-time
+
+    Portfolio:
+      type: object
+      properties:
+        walletId:
+          type: string
+          format: uuid
+        address:
+          type: string
+        chainId:
+          type: integer
+          example: 8453
+        balances:
+          type: array
+          items:
+            type: object
+            properties:
+              token:
+                type: string
+                example: 'ETH'
+              balance:
+                type: string
+                example: '1.5'
+              usdValue:
+                type: string
+                nullable: true
+                example: '4500.00'
+        lastUpdated:
+          type: string
+          format: date-time
+
+    X402Proposal:
+      type: object
+      properties:
+        proposalId:
+          type: string
+          format: uuid
+        merchant:
+          type: string
+          example: 'Example API'
+        amount:
+          type: string
+          example: '0.001'
+        token:
+          type: string
+          example: 'ETH'
+        recipient:
+          type: string
+          example: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb'
+        resource:
+          type: string
+          example: 'https://api.example.com/premium-data'
+        expiresAt:
+          type: string
+          format: date-time
+
+    UnsignedTransaction:
+      type: object
+      properties:
+        to:
+          type: string
+          example: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb'
+        data:
+          type: string
+          example: '0xa9059cbb...'
+        value:
+          type: string
+          example: '0'
+        chainId:
+          type: integer
+          example: 8453
+        gas:
+          type: string
+          example: '50000'
+        maxFeePerGas:
+          type: string
+          example: '1000000000'
+        maxPriorityFeePerGas:
+          type: string
+          example: '100000000'
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: 'Bad Request'
+        message:
+          type: string
+          example: 'Invalid input'
+        requestId:
+          type: string
+          format: uuid
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: 'Unauthorized'
+            message: 'Missing Authorization header'
+
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: 'Not Found'
+            message: 'Resource not found'
