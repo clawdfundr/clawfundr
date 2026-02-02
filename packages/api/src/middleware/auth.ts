@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import bcrypt from 'bcrypt';
-import { getApiKeyByHash, updateApiKeyLastUsed } from '../db/client';
+import { ApiKey, getActiveApiKeys, updateApiKeyLastUsed } from '../db/client';
 
 /**
  * API Key authentication middleware
@@ -39,11 +39,7 @@ export async function authMiddleware(
     }
 
     try {
-        // Hash the provided key and look up in database
-        // Note: In production, consider using a faster lookup mechanism
-        // For now, we'll do a simple hash comparison
-        const keyHash = await hashApiKey(apiKey);
-        const apiKeyRecord = await getApiKeyByHash(keyHash);
+        const apiKeyRecord = await findApiKeyByValue(apiKey);
 
         if (!apiKeyRecord) {
             return reply.status(401).send({
@@ -52,7 +48,6 @@ export async function authMiddleware(
             });
         }
 
-        // Check if key is revoked
         if (apiKeyRecord.revoked_at) {
             return reply.status(401).send({
                 error: 'Unauthorized',
@@ -60,11 +55,9 @@ export async function authMiddleware(
             });
         }
 
-        // Attach user context to request
         request.userId = apiKeyRecord.user_id;
         request.apiKeyId = apiKeyRecord.id;
 
-        // Update last used timestamp (async, don't wait)
         updateApiKeyLastUsed(apiKeyRecord.id).catch((err) => {
             console.error('Failed to update API key last_used_at:', err);
         });
@@ -78,15 +71,19 @@ export async function authMiddleware(
 }
 
 /**
- * Hash API key for database lookup
- * Note: This is a simplified version. In production, consider using
- * a more efficient lookup mechanism (e.g., indexed hash prefix)
+ * Find matching API key by bcrypt compare against active key hashes.
  */
-async function hashApiKey(apiKey: string): Promise<string> {
-    // For lookup, we need to hash with the same salt
-    // This is a simplified approach - in production, consider storing
-    // a hash prefix for faster lookup
-    return bcrypt.hash(apiKey, 10);
+async function findApiKeyByValue(apiKey: string): Promise<ApiKey | null> {
+    const activeKeys = await getActiveApiKeys();
+
+    for (const key of activeKeys) {
+        const isMatch = await bcrypt.compare(apiKey, key.key_hash);
+        if (isMatch) {
+            return key;
+        }
+    }
+
+    return null;
 }
 
 /**
@@ -99,10 +96,8 @@ export async function optionalAuthMiddleware(
     const authHeader = request.headers.authorization;
 
     if (!authHeader) {
-        // No auth header, continue without user context
         return;
     }
 
-    // If auth header is present, validate it
     return authMiddleware(request, reply);
 }

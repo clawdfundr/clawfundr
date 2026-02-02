@@ -156,6 +156,18 @@ export async function getApiKeyByHash(keyHash: string): Promise<ApiKey | null> {
     return result.rows[0] || null;
 }
 
+
+/**
+ * Get all active API keys.
+ * Used for bcrypt.compare() based validation in auth middleware.
+ */
+export async function getActiveApiKeys(): Promise<ApiKey[]> {
+    const result = await query<ApiKey>(
+        'SELECT * FROM api_keys WHERE revoked_at IS NULL'
+    );
+    return result.rows;
+}
+
 /**
  * Update API key last used timestamp
  */
