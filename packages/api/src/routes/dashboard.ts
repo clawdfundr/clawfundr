@@ -1,474 +1,505 @@
-import { FastifyInstance } from "fastify";
+import { FastifyInstance } from 'fastify';
 
 const dashboardHtml = `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Clawfundr API Dashboard</title>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-
   <style>
-    :root{
-      --bg0:#050608;
-      --bg1:#070A0F;
-
-      --panel:rgba(10,14,18,.72);
-      --panel2:rgba(10,14,18,.55);
-
-      --line:rgba(255,214,10,.22);
-      --line2:rgba(255,214,10,.10);
-
-      --yellow:#FFD60A;
-      --yellow2:#FFB700;
-
-      --text:rgba(255,244,200,.92);
-      --muted:rgba(255,244,200,.62);
-
-      --danger:#ff5c6c;
-      --ok:#7CFFB8;
-
-      --shadow: 0 22px 70px rgba(0,0,0,.60);
-      --glow: 0 0 34px rgba(255,214,10,.14);
+    :root {
+      --bg0: #050608;
+      --bg1: #070A0F;
+      --panel: rgba(10, 14, 18, 0.72);
+      --line: rgba(255, 214, 10, 0.22);
+      --yellow: #FFD60A;
+      --yellow2: #FFB700;
+      --text: rgba(255, 244, 200, 0.92);
+      --muted: rgba(255, 244, 200, 0.62);
     }
 
-    *{ box-sizing:border-box; }
-    html,body{ height:100%; }
-    body{
-      margin:0;
-      color:var(--text);
-      font-family:"Space Grotesk", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background:
-        radial-gradient(1200px 700px at 20% 10%, rgba(255,214,10,.10), transparent 55%),
-        radial-gradient(900px 600px at 80% 0%, rgba(255,183,0,.08), transparent 60%),
-        radial-gradient(1000px 900px at 70% 90%, rgba(255,214,10,.06), transparent 60%),
-        linear-gradient(180deg, var(--bg1), var(--bg0));
-      min-height:100vh;
-      padding:24px;
-      overflow-x:hidden;
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      border-radius: 0;
     }
 
-    /* overlays */
-    .noise{
-      position:fixed; inset:0;
-      pointer-events:none;
-      opacity:.08;
-      mix-blend-mode:overlay;
-      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
-      animation: noiseShift 6s steps(8) infinite;
-    }
-    @keyframes noiseShift{
-      0%{transform:translate3d(0,0,0)}
-      25%{transform:translate3d(-2%,1%,0)}
-      50%{transform:translate3d(1%,-2%,0)}
-      75%{transform:translate3d(2%,2%,0)}
-      100%{transform:translate3d(0,0,0)}
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      background: linear-gradient(180deg, var(--bg0), var(--bg1));
+      color: var(--text);
+      font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+      overflow-x: hidden;
     }
 
-    .scanlines{
-      position:fixed; inset:0;
-      pointer-events:none;
-      opacity:.10;
-      background:repeating-linear-gradient(
+    body {
+      position: relative;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.05;
+      background-image:
+        repeating-radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.07) 0, rgba(255, 255, 255, 0.07) 1px, transparent 2px, transparent 4px),
+        repeating-radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.05) 0, rgba(255, 255, 255, 0.05) 1px, transparent 2px, transparent 5px);
+      animation: noiseShift 18s linear infinite;
+      z-index: 1;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.12;
+      background: repeating-linear-gradient(
         to bottom,
-        rgba(255,214,10,.05),
-        rgba(255,214,10,.05) 1px,
-        transparent 1px,
+        rgba(255, 214, 10, 0.04) 0,
+        rgba(255, 214, 10, 0.04) 1px,
+        transparent 2px,
+        transparent 5px
+      );
+      animation: scanDrift 10s linear infinite;
+      z-index: 2;
+    }
+
+    .bg-glow {
+      position: fixed;
+      width: 46vw;
+      height: 46vw;
+      border-radius: 50%;
+      filter: blur(70px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.16;
+      background: radial-gradient(circle, rgba(255, 214, 10, 0.42), transparent 68%);
+    }
+
+    .bg-glow.left {
+      top: -18vw;
+      left: -16vw;
+    }
+
+    .bg-glow.right {
+      right: -16vw;
+      bottom: -20vw;
+    }
+
+    .shell {
+      position: relative;
+      z-index: 3;
+      width: 100%;
+      min-height: 100vh;
+      padding: 24px;
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1fr;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      backdrop-filter: blur(9px);
+      box-shadow:
+        inset 0 0 20px rgba(255, 214, 10, 0.04),
+        0 14px 40px rgba(0, 0, 0, 0.55);
+      padding: 18px;
+      transition: transform 220ms ease, box-shadow 260ms ease, border-color 220ms ease;
+    }
+
+    .panel:hover {
+      transform: translateY(-3px);
+      border-color: rgba(255, 214, 10, 0.44);
+      box-shadow:
+        inset 0 0 30px rgba(255, 214, 10, 0.07),
+        0 18px 46px rgba(0, 0, 0, 0.62),
+        0 0 18px rgba(255, 214, 10, 0.12);
+    }
+
+    .headline {
+      font-size: clamp(26px, 4.3vw, 42px);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--yellow);
+      display: inline-block;
+      position: relative;
+      text-shadow: 0 0 16px rgba(255, 214, 10, 0.2);
+      animation: glitchPulse 6.4s infinite;
+    }
+
+    .headline::before,
+    .headline::after {
+      content: attr(data-text);
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .headline::before {
+      color: rgba(255, 214, 10, 0.9);
+      text-shadow: -1px 0 rgba(255, 120, 0, 0.55);
+      animation: glitchLayerA 6.4s infinite;
+    }
+
+    .headline::after {
+      color: rgba(255, 250, 205, 0.9);
+      text-shadow: 1px 0 rgba(255, 214, 10, 0.45);
+      animation: glitchLayerB 6.4s infinite;
+    }
+
+    .panel:hover .headline,
+    .panel:hover .headline::before,
+    .panel:hover .headline::after {
+      animation-duration: 2.2s;
+    }
+
+    .subtitle {
+      margin-top: 8px;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 14px;
+      max-width: 850px;
+    }
+
+    .divider {
+      margin-top: 14px;
+      height: 1px;
+      width: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 214, 10, 0.65), transparent);
+      animation: dividerSweep 4.5s ease-in-out infinite;
+    }
+
+    .status {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      min-height: 18px;
+    }
+
+    .status.ok {
+      color: #ffe784;
+    }
+
+    .status.err {
+      color: #ffb84f;
+    }
+
+    .grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .field input {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: rgba(6, 9, 13, 0.76);
+      color: var(--text);
+      padding: 11px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      caret-color: var(--yellow);
+      transition: box-shadow 220ms ease, border-color 220ms ease, background 220ms ease;
+    }
+
+    .field input::placeholder {
+      color: rgba(255, 244, 200, 0.42);
+    }
+
+    .field input:focus {
+      outline: none;
+      border-color: rgba(255, 214, 10, 0.82);
+      box-shadow:
+        0 0 0 1px rgba(255, 214, 10, 0.4),
+        0 0 18px rgba(255, 214, 10, 0.15);
+      background: rgba(8, 12, 16, 0.92);
+    }
+
+    .btn-row {
+      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .btn {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255, 214, 10, 0.32);
+      background: rgba(13, 16, 20, 0.9);
+      color: var(--text);
+      padding: 10px 14px;
+      font-family: inherit;
+      font-size: 13px;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: transform 160ms ease, box-shadow 220ms ease, border-color 220ms ease, background 220ms ease;
+    }
+
+    .btn::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -120%;
+      width: 70%;
+      height: 100%;
+      background: linear-gradient(110deg, transparent, rgba(255, 214, 10, 0.25), transparent);
+      animation: sheen 4.8s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 214, 10, 0.72);
+      box-shadow: 0 0 18px rgba(255, 214, 10, 0.18);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+      box-shadow: 0 0 10px rgba(255, 214, 10, 0.1);
+    }
+
+    .btn.primary {
+      border-color: rgba(255, 214, 10, 0.8);
+      background: linear-gradient(180deg, rgba(255, 214, 10, 0.22), rgba(255, 183, 0, 0.08));
+      box-shadow: inset 0 0 14px rgba(255, 214, 10, 0.12);
+      color: #fff7ce;
+      animation: pulseGlow 2.8s ease-in-out infinite;
+    }
+
+    .btn.ghost {
+      border-color: rgba(255, 214, 10, 0.24);
+      background: rgba(12, 15, 20, 0.75);
+      color: var(--muted);
+    }
+
+    .btn.warn {
+      border-color: rgba(255, 183, 0, 0.38);
+      background: rgba(20, 14, 8, 0.72);
+      color: #ffd591;
+    }
+
+    .api-display {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      background: rgba(5, 8, 11, 0.88);
+      padding: 12px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 46px;
+    }
+
+    .api-display code {
+      color: #ffe89d;
+      font-size: 13px;
+      letter-spacing: 0.02em;
+      word-break: break-all;
+    }
+
+    .api-display.empty code {
+      color: var(--muted);
+    }
+
+    .terminal {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      background: rgba(3, 6, 9, 0.95);
+      min-height: 240px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .terminal::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(255, 214, 10, 0.03) 0,
+        rgba(255, 214, 10, 0.03) 1px,
+        transparent 2px,
         transparent 4px
       );
-      mix-blend-mode:soft-light;
-      animation: scanMove 10s linear infinite;
-    }
-    @keyframes scanMove{
-      from{transform:translateY(0)}
-      to{transform:translateY(20px)}
+      opacity: 0.38;
+      animation: scanDrift 9s linear infinite;
     }
 
-    .wrap{
-      max-width: 1020px;
-      margin:0 auto;
-      display:grid;
-      gap:16px;
+    pre {
+      position: relative;
+      z-index: 1;
+      white-space: pre-wrap;
+      padding: 14px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: rgba(255, 245, 204, 0.9);
+      max-height: 340px;
+      overflow: auto;
     }
 
-    .card{
-      position:relative;
-      background:var(--panel);
-      border:1px solid var(--line);
-      border-radius:18px;
-      padding:18px;
-      box-shadow: var(--shadow), var(--glow);
-      backdrop-filter: blur(10px);
-      overflow:hidden;
-      transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
-    }
-    .card:hover{
-      transform: translateY(-3px);
-      border-color: rgba(255,214,10,.35);
-      box-shadow: 0 24px 80px rgba(0,0,0,.65), 0 0 40px rgba(255,214,10,.16);
+    .prompt-line {
+      position: relative;
+      z-index: 1;
+      padding: 0 14px 14px;
+      color: rgba(255, 234, 154, 0.9);
+      font-size: 12px;
     }
 
-    /* subtle top border highlight */
-    .card::before{
-      content:"";
-      position:absolute;
-      left:0; right:0; top:0;
-      height:1px;
-      background: linear-gradient(90deg, transparent, rgba(255,214,10,.55), transparent);
-      opacity:.55;
+    .prompt-line .caret {
+      display: inline-block;
+      width: 7px;
+      height: 14px;
+      margin-left: 5px;
+      background: var(--yellow);
+      animation: blink 0.95s steps(1) infinite;
+      vertical-align: -2px;
     }
 
-    /* terminal corner ticks */
-    .ticks{
-      position:absolute;
-      inset:10px;
-      pointer-events:none;
-      border-radius:14px;
-      box-shadow:
-        0 0 0 1px rgba(255,214,10,.06) inset;
-      background:
-        linear-gradient(var(--line2), var(--line2)) 0 0/20px 1px no-repeat,
-        linear-gradient(var(--line2), var(--line2)) 0 0/1px 20px no-repeat,
-        linear-gradient(var(--line2), var(--line2)) 100% 0/20px 1px no-repeat,
-        linear-gradient(var(--line2), var(--line2)) 100% 0/1px 20px no-repeat,
-        linear-gradient(var(--line2), var(--line2)) 0 100%/20px 1px no-repeat,
-        linear-gradient(var(--line2), var(--line2)) 0 100%/1px 20px no-repeat,
-        linear-gradient(var(--line2), var(--line2)) 100% 100%/20px 1px no-repeat,
-        linear-gradient(var(--line2), var(--line2)) 100% 100%/1px 20px no-repeat;
-      opacity:.65;
+    @keyframes noiseShift {
+      0% { transform: translate(0, 0); }
+      25% { transform: translate(-1.2%, 1%); }
+      50% { transform: translate(1%, -0.8%); }
+      75% { transform: translate(-0.8%, -1.1%); }
+      100% { transform: translate(0, 0); }
     }
 
-    .topbar{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:14px;
+    @keyframes scanDrift {
+      from { transform: translateY(-8px); }
+      to { transform: translateY(8px); }
     }
 
-    .kicker{
-      font-family:"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-      font-size:12px;
-      letter-spacing:.18em;
-      text-transform:uppercase;
-      color:var(--muted);
+    @keyframes dividerSweep {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
     }
 
-    h1{
-      margin:8px 0 6px;
-      font-size: clamp(26px, 4vw, 38px);
-      letter-spacing:.01em;
-      line-height:1.15;
+    @keyframes sheen {
+      0%, 60% { left: -130%; }
+      100% { left: 140%; }
     }
 
-    .muted{ color: var(--muted); }
-    .divider{
-      margin-top:14px;
-      height:1px;
-      width:100%;
-      background: var(--line2);
+    @keyframes blink {
+      0%, 52% { opacity: 1; }
+      52.01%, 100% { opacity: 0; }
     }
 
-    .status{
-      margin-top:10px;
-      min-height:20px;
-      font-size:13px;
-      color:var(--muted);
-      font-family:"JetBrains Mono", ui-monospace, monospace;
-    }
-    .ok{ color:var(--ok); }
-    .err{ color:var(--danger); }
-
-    .grid{
-      display:grid;
-      gap:12px;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: inset 0 0 12px rgba(255, 214, 10, 0.09), 0 0 0 rgba(255, 214, 10, 0); }
+      50% { box-shadow: inset 0 0 14px rgba(255, 214, 10, 0.16), 0 0 16px rgba(255, 214, 10, 0.18); }
     }
 
-    label{
-      display:block;
-      font-size:12px;
-      margin:0 0 6px;
-      color:var(--muted);
-      font-family:"JetBrains Mono", ui-monospace, monospace;
+    @keyframes glitchPulse {
+      0%, 92%, 100% { transform: none; filter: none; }
+      93% { transform: translateX(1px); filter: brightness(1.1); }
+      94% { transform: translateX(-1px); }
+      95% { transform: none; }
     }
 
-    input{
-      width:100%;
-      border:1px solid rgba(255,214,10,.18);
-      background: rgba(0,0,0,.25);
-      color:var(--text);
-      border-radius:12px;
-      font-size:14px;
-      padding:11px 12px;
-      outline:none;
-      box-shadow: 0 0 0 1px rgba(255,214,10,.06) inset;
-      transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
-      caret-color: var(--yellow);
-    }
-    input:focus{
-      border-color: rgba(255,214,10,.55);
-      box-shadow:
-        0 0 0 1px rgba(255,214,10,.12) inset,
-        0 0 24px rgba(255,214,10,.12);
-      transform: translateY(-1px);
+    @keyframes glitchLayerA {
+      0%, 92%, 100% { opacity: 0; transform: translate(0, 0); }
+      93% { opacity: 0.55; transform: translate(-1px, 0); }
+      94% { opacity: 0.35; transform: translate(1px, -1px); }
+      95% { opacity: 0; transform: translate(0, 0); }
     }
 
-    .btns{ display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
-
-    button{
-      position:relative;
-      border:1px solid rgba(255,214,10,.22);
-      background: linear-gradient(180deg, rgba(255,214,10,.16), rgba(255,214,10,.06));
-      color: var(--text);
-      border-radius:12px;
-      padding:10px 14px;
-      font: inherit;
-      font-size:14px;
-      cursor:pointer;
-      box-shadow:
-        0 0 0 1px rgba(255,214,10,.08) inset,
-        0 0 22px rgba(255,214,10,.10);
-      transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease, filter .15s ease;
-      overflow:hidden;
-      font-family:"JetBrains Mono", ui-monospace, monospace;
+    @keyframes glitchLayerB {
+      0%, 92%, 100% { opacity: 0; transform: translate(0, 0); }
+      93% { opacity: 0.45; transform: translate(1px, 0); }
+      94% { opacity: 0.3; transform: translate(-1px, 1px); }
+      95% { opacity: 0; transform: translate(0, 0); }
     }
 
-    /* animated sheen */
-    button::after{
-      content:"";
-      position:absolute;
-      inset:-40% -60%;
-      background: linear-gradient(90deg, transparent, rgba(255,214,10,.18), transparent);
-      transform: rotate(12deg);
-      animation: sheen 3.6s ease-in-out infinite;
-      opacity:.55;
-      pointer-events:none;
-    }
-    @keyframes sheen{
-      0%{transform:translateX(-30%) rotate(12deg); opacity:.0}
-      35%{opacity:.55}
-      60%{transform:translateX(30%) rotate(12deg); opacity:.0}
-      100%{opacity:.0}
-    }
-
-    button:hover{
-      transform: translateY(-1px);
-      border-color: rgba(255,214,10,.50);
-      box-shadow:
-        0 0 0 1px rgba(255,214,10,.14) inset,
-        0 0 30px rgba(255,214,10,.18);
-      filter: brightness(1.05);
-    }
-    button:active{ transform: translateY(0px) scale(.99); }
-
-    button.alt{
-      border-color: rgba(255,183,0,.28);
-      background: linear-gradient(180deg, rgba(255,183,0,.18), rgba(255,183,0,.07));
-    }
-
-    button.warn{
-      border-color: rgba(255,92,108,.35);
-      background: linear-gradient(180deg, rgba(255,92,108,.18), rgba(255,92,108,.06));
-      box-shadow:
-        0 0 0 1px rgba(255,92,108,.12) inset,
-        0 0 26px rgba(255,92,108,.10);
-    }
-    button.warn:hover{
-      border-color: rgba(255,92,108,.60);
-      box-shadow:
-        0 0 0 1px rgba(255,92,108,.16) inset,
-        0 0 34px rgba(255,92,108,.14);
-    }
-
-    .hint{
-      margin-top:10px;
-      font-size:12px;
-      color:var(--muted);
-      font-family:"JetBrains Mono", ui-monospace, monospace;
-    }
-
-    pre{
-      margin:0;
-      white-space:pre-wrap;
-      background: rgba(0,0,0,.30);
-      border: 1px solid rgba(255,214,10,.14);
-      border-radius:14px;
-      padding:14px;
-      color: rgba(255,244,200,.90);
-      font-size:13px;
-      max-height: 360px;
-      overflow:auto;
-      font-family:"JetBrains Mono", ui-monospace, monospace;
-      position:relative;
-    }
-
-    /* terminal caret */
-    .caret::after{
-      content:"▌";
-      margin-left:6px;
-      color: var(--yellow);
-      animation: blink 1s steps(1) infinite;
-      opacity:.9;
-    }
-    @keyframes blink{ 50%{ opacity:0; } }
-
-    /* glitch title */
-    .glitch{
-      position:relative;
-      display:inline-block;
-      text-shadow: 0 0 18px rgba(255,214,10,.20);
-    }
-    .glitch::before,
-    .glitch::after{
-      content: attr(data-text);
-      position:absolute;
-      left:0; top:0;
-      width:100%;
-      overflow:hidden;
-      clip-path: inset(0 0 0 0);
-      opacity:0;
-      pointer-events:none;
-      font-family: inherit;
-    }
-    .glitch::before{
-      transform: translateX(-1px);
-      color: rgba(255,214,10,.85);
-    }
-    .glitch::after{
-      transform: translateX(1px);
-      color: rgba(255,183,0,.75);
-    }
-    .glitch.idle::before{ animation: glitchLayer 5.5s infinite; }
-    .glitch.idle::after{  animation: glitchLayer2 5.5s infinite; }
-
-    @keyframes glitchLayer{
-      0%, 90%, 100% {opacity:0; clip-path: inset(0 0 100% 0);}
-      91%{opacity:.8; clip-path: inset(10% 0 70% 0);}
-      92%{opacity:.0; clip-path: inset(0 0 100% 0);}
-      93%{opacity:.7; clip-path: inset(45% 0 35% 0);}
-      94%{opacity:.0;}
-      95%{opacity:.6; clip-path: inset(65% 0 18% 0);}
-      96%{opacity:0;}
-    }
-    @keyframes glitchLayer2{
-      0%, 90%, 100% {opacity:0; clip-path: inset(0 0 100% 0);}
-      91%{opacity:.6; clip-path: inset(20% 0 55% 0);}
-      92%{opacity:.0;}
-      93%{opacity:.55; clip-path: inset(52% 0 28% 0);}
-      94%{opacity:.0;}
-      95%{opacity:.5; clip-path: inset(72% 0 12% 0);}
-      96%{opacity:0;}
-    }
-
-    /* micro badge */
-    .badge{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:8px 10px;
-      border-radius:999px;
-      border:1px solid rgba(255,214,10,.18);
-      background: rgba(0,0,0,.18);
-      font-family:"JetBrains Mono", ui-monospace, monospace;
-      font-size:12px;
-      color: var(--muted);
-      white-space:nowrap;
-    }
-    .dot{
-      width:8px; height:8px; border-radius:999px;
-      background: rgba(255,214,10,.85);
-      box-shadow: 0 0 18px rgba(255,214,10,.22);
-      animation: pulse 2.8s ease-in-out infinite;
-    }
-    @keyframes pulse{
-      0%,100%{ transform:scale(1); opacity:.8; }
-      50%{ transform:scale(1.15); opacity:1; }
-    }
-
-    /* Responsive padding */
-    @media (max-width: 640px){
-      body{ padding:16px; }
-      .card{ padding:16px; }
+    @media (max-width: 900px) {
+      .shell { padding: 14px; gap: 12px; }
+      .panel { padding: 14px; }
+      .grid { grid-template-columns: 1fr; gap: 12px; }
+      .btn-row { gap: 8px; }
+      .btn { flex: 1 1 auto; }
+      .api-display { align-items: flex-start; flex-direction: column; }
     }
   </style>
 </head>
-
 <body>
-  <div class="noise"></div>
-  <div class="scanlines"></div>
+  <div class="bg-glow left"></div>
+  <div class="bg-glow right"></div>
 
-  <main class="wrap">
-    <section class="card">
-      <div class="ticks"></div>
-
-      <div class="topbar">
-        <div>
-          <div class="kicker">CLAWFUNDR // API ACCESS CONSOLE</div>
-          <h1 class="glitch idle" data-text="Clawfundr API Dashboard">Clawfundr API Dashboard</h1>
-          <div class="muted">Register user, store API key, create/list/revoke keys from one place.</div>
-          <div class="divider"></div>
-          <div class="hint">Tip: avoid showing full keys in UI; show last 4 + Copy button.</div>
-        </div>
-
-        <div class="badge" title="Console status">
-          <span class="dot"></span>
-          <span>secure terminal</span>
-        </div>
-      </div>
-
-      <div id="status" class="status"></div>
+  <main class="shell">
+    <section class="panel">
+      <h1 class="headline" data-text="Clawfundr API Dashboard">Clawfundr API Dashboard</h1>
+      <p class="subtitle">[security-console] register accounts, issue and rotate API keys, and audit access from a unified terminal control surface.</p>
+      <div class="divider"></div>
+      <div id="status" class="status">[ready] listening for commands</div>
     </section>
 
-    <section class="card">
-      <div class="ticks"></div>
-
+    <section class="panel">
       <div class="grid">
-        <div>
+        <div class="field">
           <label for="name">Name (register)</label>
-          <input id="name" placeholder="Alice" autocomplete="name" />
+          <input id="name" placeholder="Alice" />
         </div>
-        <div>
+        <div class="field">
           <label for="email">Email (optional)</label>
-          <input id="email" placeholder="alice@example.com" autocomplete="email" />
+          <input id="email" placeholder="alice@example.com" />
         </div>
       </div>
-      <div class="btns">
-        <button id="registerBtn" class="alt">Register + Get API Key</button>
+      <div class="btn-row">
+        <button id="registerBtn" class="btn primary">Register + Get API Key</button>
       </div>
     </section>
 
-    <section class="card">
-      <div class="ticks"></div>
-
+    <section class="panel">
       <div class="grid">
-        <div>
+        <div class="field">
           <label for="apiKey">Current API Key</label>
-          <input id="apiKey" placeholder="claw_..." />
+          <input id="apiKey" type="password" autocomplete="off" placeholder="claw_..." />
         </div>
-        <div>
-          <label for="label">New key label</label>
+        <div class="field">
+          <label for="label">New Key Label</label>
           <input id="label" placeholder="CLI key" />
         </div>
+        <div class="field">
+          <label for="deleteKeyId">Delete Key ID (UUID)</label>
+          <input id="deleteKeyId" placeholder="00000000-0000-0000-0000-000000000000" />
+        </div>
       </div>
-      <div class="btns">
-        <button id="saveKeyBtn">Save Key</button>
-        <button id="listKeysBtn">List Keys</button>
-        <button id="createKeyBtn" class="alt">Create Key</button>
-        <button id="clearKeyBtn" class="warn">Clear Saved Key</button>
+
+      <div id="apiDisplay" class="api-display empty">
+        <code id="maskedKey">claw_****...****</code>
+        <button id="copyKeyBtn" class="btn ghost" type="button">Copy</button>
+      </div>
+
+      <div class="btn-row">
+        <button id="saveKeyBtn" class="btn">Save Key</button>
+        <button id="listKeysBtn" class="btn">List Keys</button>
+        <button id="createKeyBtn" class="btn primary">Create Key</button>
+        <button id="deleteSelectedBtn" class="btn warn">Delete Key</button>
+        <button id="clearKeyBtn" class="btn ghost">Clear Saved Key</button>
       </div>
     </section>
 
-    <section class="card">
-      <div class="ticks"></div>
-
-      <div class="btns">
-        <button id="deleteSelectedBtn" class="warn">Delete Selected Key</button>
+    <section class="panel">
+      <div class="terminal">
+        <pre id="output">[ready] listening for commands</pre>
+        <div class="prompt-line">console&gt; waiting<span class="caret"></span></div>
       </div>
-
-      <pre id="output"><span class="caret">Ready.</span></pre>
     </section>
   </main>
 
@@ -477,12 +508,37 @@ const dashboardHtml = `<!doctype html>
     const nameInput = document.getElementById('name');
     const emailInput = document.getElementById('email');
     const labelInput = document.getElementById('label');
+    const deleteKeyIdInput = document.getElementById('deleteKeyId');
     const statusEl = document.getElementById('status');
     const outputEl = document.getElementById('output');
-    let selectedKeyId = null;
+    const maskedKeyEl = document.getElementById('maskedKey');
+    const apiDisplayEl = document.getElementById('apiDisplay');
 
-    const saved = localStorage.getItem('clawfundr_api_key');
-    if (saved) apiKeyInput.value = saved;
+    let rawApiKey = '';
+
+    function maskKey(key) {
+      if (!key || !key.startsWith('claw_')) return 'claw_****...****';
+      if (key.length <= 18) return key.slice(0, 7) + '****';
+      const suffix = key.slice(-4);
+      return 'claw_****...****' + suffix;
+    }
+
+    function renderMaskedKey() {
+      maskedKeyEl.textContent = maskKey(rawApiKey);
+      if (rawApiKey) {
+        apiDisplayEl.classList.remove('empty');
+      } else {
+        apiDisplayEl.classList.add('empty');
+      }
+    }
+
+    function setRawApiKey(key, syncInput) {
+      rawApiKey = (key || '').trim();
+      if (syncInput !== false) {
+        apiKeyInput.value = rawApiKey;
+      }
+      renderMaskedKey();
+    }
 
     function setStatus(message, isError) {
       statusEl.textContent = message;
@@ -490,123 +546,138 @@ const dashboardHtml = `<!doctype html>
     }
 
     function setOutput(payload) {
-      outputEl.textContent = typeof payload === 'string'
-        ? payload
-        : JSON.stringify(payload, null, 2);
-      // add caret feel after updates
-      if (!outputEl.textContent.endsWith('▌')) {
-        outputEl.textContent += '\\n';
-      }
+      outputEl.textContent = typeof payload === 'string' ? payload : JSON.stringify(payload, null, 2);
     }
 
     function getKey() {
-      return apiKeyInput.value.trim();
+      return rawApiKey || apiKeyInput.value.trim();
     }
 
-    async function request(path, options = {}, needsAuth = false) {
-      const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+    async function request(path, options, needsAuth) {
+      const opts = options || {};
+      const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+
       if (needsAuth) {
         const key = getKey();
         if (!key) throw new Error('Missing API key. Paste or register first.');
         headers.Authorization = 'Bearer ' + key;
       }
 
-      const res = await fetch(path, { ...options, headers });
+      const res = await fetch(path, Object.assign({}, opts, { headers }));
       const text = await res.text();
       let body = null;
-      try { body = text ? JSON.parse(text) : null; } catch (e) {}
+      try { body = text ? JSON.parse(text) : null; } catch (_e) {}
+
       if (!res.ok) {
         const msg = body && body.message ? body.message : ('HTTP ' + res.status);
         throw new Error(msg);
       }
+
       return body;
     }
 
-    document.getElementById('registerBtn').onclick = async () => {
+    const saved = localStorage.getItem('clawfundr_api_key');
+    if (saved) setRawApiKey(saved, true);
+    else renderMaskedKey();
+
+    apiKeyInput.addEventListener('input', function () {
+      setRawApiKey(apiKeyInput.value, false);
+    });
+
+    document.getElementById('copyKeyBtn').onclick = async function () {
       try {
-        setStatus('Registering...', false);
+        const key = getKey();
+        if (!key) throw new Error('No API key available to copy.');
+        await navigator.clipboard.writeText(key);
+        setStatus('[ok] API key copied to clipboard.', false);
+      } catch (err) {
+        setStatus('[error] ' + err.message, true);
+      }
+    };
+
+    document.getElementById('registerBtn').onclick = async function () {
+      try {
+        setStatus('[run] registering user...', false);
         const body = {
           name: nameInput.value.trim() || undefined,
           email: emailInput.value.trim() || undefined,
         };
-        const data = await request('/v1/auth/register', { method: 'POST', body: JSON.stringify(body) });
+        const data = await request('/v1/auth/register', {
+          method: 'POST',
+          body: JSON.stringify(body)
+        }, false);
+
         if (data && data.apiKey) {
-          apiKeyInput.value = data.apiKey;
+          setRawApiKey(data.apiKey, true);
           localStorage.setItem('clawfundr_api_key', data.apiKey);
         }
-        setOutput(data);
-        setStatus('Registered. API key saved locally in this browser.', false);
+
+        setOutput(data || '[ok] register complete');
+        setStatus('[ok] registered. API key stored in this browser.', false);
       } catch (err) {
-        setStatus(err.message, true);
+        setStatus('[error] ' + err.message, true);
       }
     };
 
-    document.getElementById('saveKeyBtn').onclick = () => {
+    document.getElementById('saveKeyBtn').onclick = function () {
       const key = getKey();
-      if (!key) return setStatus('Nothing to save.', true);
+      if (!key) return setStatus('[error] nothing to save.', true);
       localStorage.setItem('clawfundr_api_key', key);
-      setStatus('API key saved locally.', false);
+      setRawApiKey(key, true);
+      setStatus('[ok] API key saved locally.', false);
     };
 
-    document.getElementById('clearKeyBtn').onclick = () => {
-      apiKeyInput.value = '';
+    document.getElementById('clearKeyBtn').onclick = function () {
       localStorage.removeItem('clawfundr_api_key');
-      setStatus('Saved key cleared.', false);
+      setRawApiKey('', true);
+      setStatus('[ok] saved key cleared.', false);
+      setOutput('[ready] listening for commands');
     };
 
-    document.getElementById('listKeysBtn').onclick = async () => {
+    document.getElementById('listKeysBtn').onclick = async function () {
       try {
-        setStatus('Loading keys...', false);
+        setStatus('[run] loading keys...', false);
         const data = await request('/v1/auth/keys', { method: 'GET' }, true);
-        setOutput(data);
-        setStatus('Keys loaded. Copy an id to delete.', false);
+        setOutput(data || '[]');
+        setStatus('[ok] keys loaded.', false);
       } catch (err) {
-        setStatus(err.message, true);
+        setStatus('[error] ' + err.message, true);
       }
     };
 
-    document.getElementById('createKeyBtn').onclick = async () => {
+    document.getElementById('createKeyBtn').onclick = async function () {
       try {
-        setStatus('Creating key...', false);
+        setStatus('[run] creating key...', false);
         const payload = { label: labelInput.value.trim() || 'Dashboard Key' };
-        const data = await request('/v1/auth/keys', { method: 'POST', body: JSON.stringify(payload) }, true);
-        setOutput(data);
-        setStatus('New key created. Save it now; it is only shown once.', false);
+        const data = await request('/v1/auth/keys', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        }, true);
+        setOutput(data || '[ok] key created');
+        setStatus('[ok] key created. Save it now; it is shown once.', false);
       } catch (err) {
-        setStatus(err.message, true);
+        setStatus('[error] ' + err.message, true);
       }
     };
 
-    document.getElementById('deleteSelectedBtn').onclick = async () => {
+    document.getElementById('deleteSelectedBtn').onclick = async function () {
       try {
-        if (!selectedKeyId) {
-          const manual = prompt('Paste key id (UUID) to delete:');
-          if (!manual) return;
-          selectedKeyId = manual.trim();
-        }
-        setStatus('Deleting key...', false);
-        const data = await request('/v1/auth/keys/' + selectedKeyId, { method: 'DELETE' }, true);
-        setOutput(data);
-        setStatus('Key deleted.', false);
-        selectedKeyId = null;
+        const keyId = deleteKeyIdInput.value.trim();
+        if (!keyId) throw new Error('Provide key id to delete.');
+        setStatus('[run] deleting key...', false);
+        const data = await request('/v1/auth/keys/' + keyId, { method: 'DELETE' }, true);
+        setOutput(data || '[ok] key deleted');
+        setStatus('[ok] key deleted.', false);
       } catch (err) {
-        setStatus(err.message, true);
+        setStatus('[error] ' + err.message, true);
       }
     };
-
-    outputEl.addEventListener('click', () => {
-      const maybe = prompt('Set selected key id (UUID) for delete:');
-      if (maybe) {
-        selectedKeyId = maybe.trim();
-        setStatus('Selected key id stored for delete action.', false);
-      }
-    });
   </script>
 </body>
 </html>`;
 
 export async function dashboardRoutes(fastify: FastifyInstance) {
-  fastify.get("/dashboard", async (_request, reply) => {
-    reply.type("text/html").send(dashboardHtml);
-  });
+    fastify.get('/dashboard', async (_request, reply) => {
+        reply.type('text/html').send(dashboardHtml);
+    });
 }
