@@ -416,6 +416,20 @@ const dashboardHtml = `<!doctype html>
     let rawApiKey = localStorage.getItem('clawfundr_api_key') || '';
     let claimLink = localStorage.getItem('clawfundr_claim_link') || '';
 
+    function normalizeClaimLink(link) {
+      if (!link) return '';
+      try {
+        const u = new URL(link);
+        if (!/\/claim\//i.test(u.pathname) && /\/[0-9a-f-]{36}$/i.test(u.pathname)) {
+          u.pathname = '/claim' + u.pathname;
+          return u.toString();
+        }
+      } catch (_e) {}
+      return link;
+    }
+
+    claimLink = normalizeClaimLink(claimLink);
+
     function maskKey(key) {
       if (!key || !key.startsWith('claw_')) return 'claw_****...****';
       return 'claw_****...****' + key.slice(-4);
@@ -490,7 +504,7 @@ const dashboardHtml = `<!doctype html>
         });
 
         rawApiKey = data.apiKey || '';
-        claimLink = data.claimLink || '';
+        claimLink = normalizeClaimLink(data.claimLink || '');
         if (rawApiKey) localStorage.setItem('clawfundr_api_key', rawApiKey);
         if (claimLink) localStorage.setItem('clawfundr_claim_link', claimLink);
 
@@ -594,6 +608,15 @@ const claimHtml = `<!doctype html>
     const code = new URLSearchParams(window.location.search).get('code') || '';
 
     let tweetIntentUrl = '';
+    let currentAgentName = '';
+
+    function redirectToProfile() {
+      if (!currentAgentName) {
+        window.location.href = 'https://www.clawfundr.xyz/users';
+        return;
+      }
+      window.location.href = 'https://www.clawfundr.xyz/u/' + encodeURIComponent(currentAgentName);
+    }
 
     function setStatus(message, isError) {
       statusEl.textContent = message;
@@ -621,12 +644,14 @@ const claimHtml = `<!doctype html>
     async function loadClaimData() {
       const data = await request('/v1/agents/claim/' + userId + '?code=' + encodeURIComponent(code), { method: 'GET' });
       tweetIntentUrl = data.tweetIntentUrl || '';
+      currentAgentName = data.agentName || currentAgentName;
+      if (tweetUrlInput && data.tweetUrl) tweetUrlInput.value = data.tweetUrl;
       agentInfoEl.textContent = 'agent: ' + (data.agentName || '-') + ' | description: ' + (data.description || '-') + ' | status: ' + (data.verificationStatus || '-');
       tweetTemplateEl.textContent = data.tweetTemplate || 'tweet_template: pending';
       setOutput(data);
       if (data.verificationStatus === 'verified') {
-        setStatus('[ok] already verified. redirecting to dashboard...', false);
-        setTimeout(function () { window.location.href = '/dashboard#agent-profile-panel'; }, 900);
+        setStatus('[ok] already verified. redirecting to profile...', false);
+        setTimeout(function () { redirectToProfile(); }, 900);
       } else {
         setStatus('[ok] claim details loaded.', false);
       }
@@ -647,8 +672,8 @@ const claimHtml = `<!doctype html>
         });
         setOutput(data);
         if (data.verified) {
-          setStatus('[ok] verification successful. redirecting...', false);
-          setTimeout(function () { window.location.href = '/dashboard#agent-profile-panel'; }, 900);
+          setStatus('[ok] verification successful. redirecting to profile...', false);
+          setTimeout(function () { redirectToProfile(); }, 900);
         } else {
           setStatus('[warn] auto verify failed. paste tweet URL and click manual re-verify.', false);
         }
@@ -668,8 +693,8 @@ const claimHtml = `<!doctype html>
         });
         setOutput(data);
         if (data.verified) {
-          setStatus('[ok] verification successful. redirecting...', false);
-          setTimeout(function () { window.location.href = '/dashboard#agent-profile-panel'; }, 900);
+          setStatus('[ok] verification successful. redirecting to profile...', false);
+          setTimeout(function () { redirectToProfile(); }, 900);
         } else {
           setStatus('[warn] verification failed. please check tweet contents and try again.', false);
         }

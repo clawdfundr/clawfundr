@@ -29,8 +29,16 @@ function toProfilePath(agentName: string): string {
 
 function getTwitterHandle(tweetUrl: string | null): string | null {
     if (!tweetUrl) return null;
-    const match = tweetUrl.match(/(?:x|twitter)\.com\/([A-Za-z0-9_]{1,15})\/status\//i);
-    return match ? match[1] : null;
+
+    const normalized = tweetUrl.trim();
+    const directMatch = normalized.match(/(?:x|twitter)\.com\/(?:#!\/)?([A-Za-z0-9_]{1,15})\/status\/\d+/i);
+    if (directMatch) return directMatch[1];
+
+    // Some shared links may contain an @handle query string or path fragments.
+    const queryHandle = normalized.match(/[?&]screen_name=([A-Za-z0-9_]{1,15})/i);
+    if (queryHandle) return queryHandle[1];
+
+    return null;
 }
 
 function createTweetText(agentName: string, code: string): string {
@@ -42,21 +50,44 @@ function createTweetIntentUrl(text: string): string {
 }
 
 function isValidTweetUrl(url: string): boolean {
-    return /^https?:\/\/(?:www\.)?(?:x|twitter)\.com\/[A-Za-z0-9_]{1,15}\/status\/\d+/i.test(url);
+    return /^https?:\/\/(?:www\.|m\.)?(?:x|twitter)\.com\/(?:[A-Za-z0-9_]{1,15}|i(?:\/web)?)\/status\/\d+/i.test(url);
 }
 
 type XPublicMetrics = { followersCount: number; followingCount: number };
 
+
+async function resolveTwitterHandleFromTweetUrl(tweetUrl: string | null): Promise<string | null> {
+    const direct = getTwitterHandle(tweetUrl);
+    if (direct) return direct;
+    if (!tweetUrl || !isValidTweetUrl(tweetUrl)) return null;
+
+    try {
+        const oembedUrl = `https://publish.twitter.com/oembed?omit_script=true&url=${encodeURIComponent(tweetUrl)}`;
+        const res = await fetch(oembedUrl);
+        if (!res.ok) return null;
+
+        const payload = (await res.json()) as { author_url?: string };
+        const authorUrl = payload.author_url || '';
+        const match = authorUrl.match(/(?:x|twitter)\.com\/([A-Za-z0-9_]{1,15})/i);
+        return match ? match[1] : null;
+    } catch {
+        return null;
+    }
+}
+
 async function getXPublicMetrics(handle: string | null): Promise<XPublicMetrics | null> {
     if (!handle) return null;
+
+    const normalizedHandle = handle.replace(/^@+/, '').trim();
+    if (!normalizedHandle) return null;
 
     const bearer = process.env.X_BEARER_TOKEN || process.env.TWITTER_BEARER_TOKEN;
 
     // Preferred: official v2 API with bearer token.
     if (bearer) {
         const endpoints = [
-            `https://api.x.com/2/users/by/username/${encodeURIComponent(handle)}?user.fields=public_metrics`,
-            `https://api.twitter.com/2/users/by/username/${encodeURIComponent(handle)}?user.fields=public_metrics`,
+            `https://api.x.com/2/users/by/username/${encodeURIComponent(normalizedHandle)}?user.fields=public_metrics`,
+            `https://api.twitter.com/2/users/by/username/${encodeURIComponent(normalizedHandle)}?user.fields=public_metrics`,
         ];
 
         for (const endpoint of endpoints) {
@@ -86,8 +117,13 @@ async function getXPublicMetrics(handle: string | null): Promise<XPublicMetrics 
 
     // Fallback: public syndication endpoint (no bearer needed).
     try {
-        const fallbackEndpoint = `https://cdn.syndication.twimg.com/widgets/followbutton/info.json?screen_names=${encodeURIComponent(handle)}`;
-        const res = await fetch(fallbackEndpoint);
+        const fallbackEndpoint = `https://cdn.syndication.twimg.com/widgets/followbutton/info.json?screen_names=${encodeURIComponent(normalizedHandle)}`;
+        const res = await fetch(fallbackEndpoint, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (compatible; ClawfundrBot/1.0; +https://clawfundr.xyz)',
+                Accept: 'application/json,text/plain,*/*',
+            },
+        });
         if (!res.ok) return null;
 
         const payload = (await res.json()) as Array<{
@@ -107,7 +143,7 @@ async function getXPublicMetrics(handle: string | null): Promise<XPublicMetrics 
     }
 }
 
-async function verifyTweetContainsCode(tweetUrl: string, verificationCode: string) {
+async function verifyTweetContainsCode(tweetUrl: string, verificationCode: string): Promise<{ ok: boolean; reason?: string; canonicalUrl?: string }> {
     if (!isValidTweetUrl(tweetUrl)) {
         return { ok: false, reason: 'Tweet URL must be a valid x.com/twitter.com status link.' };
     }
@@ -120,21 +156,34 @@ async function verifyTweetContainsCode(tweetUrl: string, verificationCode: strin
             return { ok: false, reason: `Tweet does not appear accessible (HTTP ${res.status}).` };
         }
 
-        const data = (await res.json()) as { html?: string };
-        const html = (data.html || '').toLowerCase();
+        const data = (await res.json()) as { html?: string; author_url?: string; url?: string };
+        const rawHtml = data.html || '';
+        const html = rawHtml.toLowerCase();
 
         if (!html) {
             return { ok: false, reason: 'Unable to read tweet content for verification.' };
         }
 
-        if (!html.includes(verificationCode.toLowerCase())) {
+        const normalizedCode = verificationCode.toLowerCase();
+        const expectedTaggedCode = `claw-${normalizedCode}`;
+
+        const hasCode =
+            html.includes(normalizedCode) ||
+            html.includes(expectedTaggedCode) ||
+            html.includes(`verification: ${expectedTaggedCode}`);
+
+        if (!hasCode) {
             return {
                 ok: false,
                 reason: `Tweet found, but verification code ${verificationCode} was not detected in the tweet text.`,
             };
         }
 
-        return { ok: true };
+        const canonicalUrl = typeof data.url === 'string' && data.url.trim().length > 0
+            ? data.url.trim()
+            : tweetUrl;
+
+        return { ok: true, canonicalUrl };
     } catch (error) {
         const reason = error instanceof Error ? error.message : 'Unknown verification error';
         return { ok: false, reason: `Verification network error: ${reason}` };
@@ -237,7 +286,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
                 const skillUsage = await getAgentSkillUsage(profile.user_id, 10);
 
                 const normalizedName = getAgentName(profile);
-                const twitterHandle = getTwitterHandle(profile.tweet_url);
+                const twitterHandle = (await resolveTwitterHandleFromTweetUrl(profile.tweet_url)) || null;
                 const xMetrics = await getXPublicMetrics(twitterHandle);
 
                 return reply.send({
@@ -426,7 +475,8 @@ export async function agentRoutes(fastify: FastifyInstance) {
                     });
                 }
 
-                const verified = await markAgentVerified(userId, candidateUrl);
+                const finalTweetUrl = check.canonicalUrl || candidateUrl;
+                const verified = await markAgentVerified(userId, finalTweetUrl);
                 return reply.send({
                     verified: true,
                     message: 'Verification successful.',
@@ -482,7 +532,8 @@ export async function agentRoutes(fastify: FastifyInstance) {
                     });
                 }
 
-                const verified = await markAgentVerified(userId, tweetUrl);
+                const finalTweetUrl = check.canonicalUrl || tweetUrl;
+                const verified = await markAgentVerified(userId, finalTweetUrl);
                 return reply.send({
                     verified: true,
                     message: 'Verification successful.',
@@ -498,3 +549,4 @@ export async function agentRoutes(fastify: FastifyInstance) {
         },
     });
 }
+
