@@ -3,6 +3,29 @@ import { getEnvConfig } from '../config/env';
 
 let pool: Pool | null = null;
 
+let agentProfilesReady = false;
+
+async function ensureAgentProfilesTable(): Promise<void> {
+    if (agentProfilesReady) {
+        return;
+    }
+
+    await query(`
+        CREATE TABLE IF NOT EXISTS agent_profiles (
+            user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            display_name TEXT,
+            verification_code TEXT NOT NULL UNIQUE,
+            verification_status TEXT NOT NULL DEFAULT 'pending' CHECK (verification_status IN ('pending', 'verified')),
+            tweet_url TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            verified_at TIMESTAMPTZ,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
+
+    agentProfilesReady = true;
+}
+
 /**
  * Initialize database connection pool
  */
@@ -21,6 +44,10 @@ export function initDb(): Pool {
 
     pool.on('error', (err) => {
         console.error('Unexpected database error:', err);
+    });
+
+    ensureAgentProfilesTable().catch((err) => {
+        console.error('Failed ensuring agent_profiles table:', err);
     });
 
     return pool;
@@ -197,6 +224,197 @@ export async function revokeApiKey(keyId: string, userId: string): Promise<void>
         'UPDATE api_keys SET revoked_at = NOW() WHERE id = $1 AND user_id = $2',
         [keyId, userId]
     );
+}
+
+// ============================================================================
+// AGENT PROFILE OPERATIONS
+// ============================================================================
+
+export interface AgentProfile {
+    user_id: string;
+    display_name: string | null;
+    verification_code: string;
+    verification_status: 'pending' | 'verified';
+    tweet_url: string | null;
+    created_at: Date;
+    verified_at: Date | null;
+    updated_at: Date;
+}
+
+export interface AgentStats {
+    total_agents: number;
+    verified_agents: number;
+    pending_agents: number;
+}
+
+export interface AgentDashboardMetrics {
+    requests_count: number;
+    tx_count: number;
+    trades_count: number;
+}
+
+export interface AgentSkillUsage {
+    route: string;
+    count: number;
+}
+
+export interface AgentActivityItem {
+    route: string;
+    ts: Date;
+}
+
+export interface AgentTradeItem {
+    hash: string;
+    type: string;
+    token_in: string | null;
+    token_out: string | null;
+    amount_in: string | null;
+    amount_out: string | null;
+}
+
+export async function upsertAgentProfile(
+    userId: string,
+    verificationCode: string,
+    displayName?: string
+): Promise<AgentProfile> {
+    await ensureAgentProfilesTable();
+
+    const result = await query<AgentProfile>(
+        `INSERT INTO agent_profiles (user_id, display_name, verification_code)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_id)
+         DO UPDATE SET
+            display_name = EXCLUDED.display_name,
+            verification_code = EXCLUDED.verification_code,
+            verification_status = 'pending',
+            tweet_url = NULL,
+            verified_at = NULL,
+            updated_at = NOW()
+         RETURNING *`,
+        [userId, displayName || null, verificationCode]
+    );
+
+    return result.rows[0];
+}
+
+export async function getAgentProfile(userId: string): Promise<AgentProfile | null> {
+    await ensureAgentProfilesTable();
+
+    const result = await query<AgentProfile>(
+        'SELECT * FROM agent_profiles WHERE user_id = $1',
+        [userId]
+    );
+
+    return result.rows[0] || null;
+}
+
+export async function saveAgentTweetUrl(userId: string, tweetUrl: string): Promise<void> {
+    await ensureAgentProfilesTable();
+
+    await query(
+        `UPDATE agent_profiles
+         SET tweet_url = $2,
+             updated_at = NOW()
+         WHERE user_id = $1`,
+        [userId, tweetUrl]
+    );
+}
+
+export async function markAgentVerified(userId: string, tweetUrl: string): Promise<AgentProfile | null> {
+    await ensureAgentProfilesTable();
+
+    const result = await query<AgentProfile>(
+        `UPDATE agent_profiles
+         SET verification_status = 'verified',
+             tweet_url = $2,
+             verified_at = NOW(),
+             updated_at = NOW()
+         WHERE user_id = $1
+         RETURNING *`,
+        [userId, tweetUrl]
+    );
+
+    return result.rows[0] || null;
+}
+
+export async function getAgentStats(): Promise<AgentStats> {
+    await ensureAgentProfilesTable();
+
+    const result = await query<AgentStats>(
+        `SELECT
+            COUNT(*)::int AS total_agents,
+            COUNT(*) FILTER (WHERE verification_status = 'verified')::int AS verified_agents,
+            COUNT(*) FILTER (WHERE verification_status = 'pending')::int AS pending_agents
+         FROM agent_profiles`
+    );
+
+    return result.rows[0];
+}
+
+export async function listAgents(limit: number = 100): Promise<AgentProfile[]> {
+    await ensureAgentProfilesTable();
+
+    const result = await query<AgentProfile>(
+        `SELECT *
+         FROM agent_profiles
+         ORDER BY created_at DESC
+         LIMIT $1`,
+        [limit]
+    );
+
+    return result.rows;
+}
+
+export async function getAgentDashboardMetrics(userId: string): Promise<AgentDashboardMetrics> {
+    const result = await query<AgentDashboardMetrics>(
+        `SELECT
+            (SELECT COUNT(*)::int FROM requests_log WHERE user_id = $1) AS requests_count,
+            (SELECT COUNT(*)::int FROM tx_raw WHERE user_id = $1) AS tx_count,
+            (SELECT COUNT(*)::int FROM tx_decoded WHERE user_id = $1) AS trades_count`,
+        [userId]
+    );
+
+    return result.rows[0];
+}
+
+export async function getAgentSkillUsage(userId: string, limit: number = 10): Promise<AgentSkillUsage[]> {
+    const result = await query<AgentSkillUsage>(
+        `SELECT route, COUNT(*)::int AS count
+         FROM requests_log
+         WHERE user_id = $1
+         GROUP BY route
+         ORDER BY count DESC
+         LIMIT $2`,
+        [userId, limit]
+    );
+
+    return result.rows;
+}
+
+export async function getAgentActivity(userId: string, limit: number = 20): Promise<AgentActivityItem[]> {
+    const result = await query<AgentActivityItem>(
+        `SELECT route, ts
+         FROM requests_log
+         WHERE user_id = $1
+         ORDER BY ts DESC
+         LIMIT $2`,
+        [userId, limit]
+    );
+
+    return result.rows;
+}
+
+export async function getAgentTrades(userId: string, limit: number = 20): Promise<AgentTradeItem[]> {
+    const result = await query<AgentTradeItem>(
+        `SELECT hash, type, token_in, token_out, amount_in, amount_out
+         FROM tx_decoded
+         WHERE user_id = $1
+         ORDER BY id DESC
+         LIMIT $2`,
+        [userId, limit]
+    );
+
+    return result.rows;
 }
 
 // ============================================================================

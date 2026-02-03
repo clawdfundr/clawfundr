@@ -2,12 +2,16 @@ import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { randomBytes } from 'crypto';
 import bcrypt from 'bcrypt';
-import { createUser, createApiKey, getUserApiKeys, revokeApiKey } from '../db/client';
+import {
+    createUser,
+    createApiKey,
+    getUserApiKeys,
+    revokeApiKey,
+    upsertAgentProfile,
+} from '../db/client';
 import { getEnvConfig } from '../config/env';
-import { isEmailConfigured, sendApiKeyEmail } from '../services/email';
 
 const registerSchema = z.object({
-    email: z.string().email('Invalid email address').optional(),
     name: z.string().min(1, 'Name is required').optional(),
 });
 
@@ -15,17 +19,33 @@ const createKeySchema = z.object({
     label: z.string().min(1, 'Label is required'),
 });
 
+function generateVerificationCode(): string {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const bytes = randomBytes(6);
+    let code = '';
+
+    for (let i = 0; i < 6; i += 1) {
+        code += alphabet[bytes[i] % alphabet.length];
+    }
+
+    return code;
+}
+
+function buildTweetIntentUrl(code: string): string {
+    const text = `I made an agent registration code on Clawfundr code: ${code}`;
+    return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+}
+
 /**
  * Authentication & API key management endpoints
  */
 export async function authRoutes(fastify: FastifyInstance) {
-    // POST /v1/auth/register - Self-service registration
+    // POST /v1/auth/register - Self-service registration + Twitter verification seed
     fastify.post('/v1/auth/register', {
         schema: {
             body: {
                 type: 'object',
                 properties: {
-                    email: { type: 'string', format: 'email' },
                     name: { type: 'string' },
                 },
             },
@@ -35,78 +55,51 @@ export async function authRoutes(fastify: FastifyInstance) {
                     properties: {
                         userId: { type: 'string' },
                         apiKey: { type: 'string' },
-                        emailSent: { type: 'boolean' },
+                        verificationCode: { type: 'string' },
+                        tweetIntentUrl: { type: 'string' },
                         message: { type: 'string' },
                     },
                 },
             },
         },
         handler: async (request, reply) => {
-            // Validate request body
-            const result = registerSchema.safeParse(request.body);
+            const result = registerSchema.safeParse(request.body || {});
             if (!result.success) {
-                return reply.status(400).send({
+                return (reply as any).status(400).send({
                     error: 'Validation Error',
                     message: result.error.errors[0].message,
                 });
             }
 
             try {
-                if (result.data.email && !isEmailConfigured()) {
-                    return reply.status(500).send({
-                        error: 'Email Service Not Configured',
-                        message:
-                            'Registration with email is unavailable because SMTP is not configured on this server.',
-                    });
-                }
-
-                // Create user
                 const user = await createUser();
 
-                // Generate API key (32 bytes = 64 hex characters)
                 const apiKey = randomBytes(32).toString('hex');
                 const apiKeyWithPrefix = `claw_${apiKey}`;
 
-                // Hash the API key
                 const config = getEnvConfig();
-                const saltRounds = parseInt(config.API_KEY_SALT_ROUNDS);
+                const saltRounds = parseInt(config.API_KEY_SALT_ROUNDS, 10);
                 const keyHash = await bcrypt.hash(apiKeyWithPrefix, saltRounds);
 
-                // Store hashed key
                 const label = result.data.name
                     ? `${result.data.name}'s API Key`
                     : 'Default API Key';
                 await createApiKey(user.id, keyHash, label);
 
-                let emailSent = false;
-                if (result.data.email) {
-                    const emailResult = await sendApiKeyEmail({
-                        to: result.data.email,
-                        apiKey: apiKeyWithPrefix,
-                        userId: user.id,
-                    });
-
-                    if (!emailResult.sent) {
-                        return reply.status(500).send({
-                            error: 'Email Delivery Failed',
-                            message: `User created, but email could not be sent: ${emailResult.reason}`,
-                        });
-                    }
-
-                    emailSent = true;
-                }
+                const verificationCode = generateVerificationCode();
+                await upsertAgentProfile(user.id, verificationCode, result.data.name);
 
                 return reply.send({
                     userId: user.id,
                     apiKey: apiKeyWithPrefix,
-                    emailSent,
-                    message: emailSent
-                        ? 'Registration successful! API key sent to your email and returned once in this response.'
-                        : 'Registration successful! Save your API key securely - it will not be shown again.',
+                    verificationCode,
+                    tweetIntentUrl: buildTweetIntentUrl(verificationCode),
+                    message:
+                        'Registration successful! Save your API key, publish verification tweet, then verify to unlock your agent dashboard.',
                 });
             } catch (error) {
                 console.error('Error during registration:', error);
-                return reply.status(500).send({
+                return (reply as any).status(500).send({
                     error: 'Internal Server Error',
                     message: 'Failed to register user',
                 });
@@ -140,10 +133,9 @@ export async function authRoutes(fastify: FastifyInstance) {
         handler: async (request, reply) => {
             const userId = request.userId!;
 
-            // Validate request body
             const result = createKeySchema.safeParse(request.body);
             if (!result.success) {
-                return reply.status(400).send({
+                return (reply as any).status(400).send({
                     error: 'Validation Error',
                     message: result.error.errors[0].message,
                 });
@@ -152,16 +144,13 @@ export async function authRoutes(fastify: FastifyInstance) {
             const { label } = result.data;
 
             try {
-                // Generate API key
                 const apiKey = randomBytes(32).toString('hex');
                 const apiKeyWithPrefix = `claw_${apiKey}`;
 
-                // Hash the API key
                 const config = getEnvConfig();
-                const saltRounds = parseInt(config.API_KEY_SALT_ROUNDS);
+                const saltRounds = parseInt(config.API_KEY_SALT_ROUNDS, 10);
                 const keyHash = await bcrypt.hash(apiKeyWithPrefix, saltRounds);
 
-                // Store hashed key
                 const apiKeyRecord = await createApiKey(userId, keyHash, label);
 
                 return reply.send({
@@ -172,7 +161,7 @@ export async function authRoutes(fastify: FastifyInstance) {
                 });
             } catch (error) {
                 console.error('Error creating API key:', error);
-                return reply.status(500).send({
+                return (reply as any).status(500).send({
                     error: 'Internal Server Error',
                     message: 'Failed to create API key',
                 });
@@ -224,7 +213,7 @@ export async function authRoutes(fastify: FastifyInstance) {
                 });
             } catch (error) {
                 console.error('Error fetching API keys:', error);
-                return reply.status(500).send({
+                return (reply as any).status(500).send({
                     error: 'Internal Server Error',
                     message: 'Failed to fetch API keys',
                 });
@@ -264,7 +253,7 @@ export async function authRoutes(fastify: FastifyInstance) {
                 });
             } catch (error) {
                 console.error('Error revoking API key:', error);
-                return reply.status(500).send({
+                return (reply as any).status(500).send({
                     error: 'Internal Server Error',
                     message: 'Failed to revoke API key',
                 });

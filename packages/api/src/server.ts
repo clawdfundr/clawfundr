@@ -13,6 +13,7 @@ import { portfolioRoutes } from './routes/portfolio';
 import { txRoutes } from './routes/tx';
 import { x402Routes } from './routes/x402';
 import { dashboardRoutes } from './routes/dashboard';
+import { agentRoutes } from './routes/agents';
 
 /**
  * Create and configure Fastify server
@@ -84,17 +85,21 @@ export async function createServer(): Promise<FastifyInstance> {
     await fastify.register(txRoutes);
     await fastify.register(x402Routes);
     await fastify.register(dashboardRoutes);
+    await fastify.register(agentRoutes);
 
     // Error handler
     fastify.setErrorHandler((error, request, reply) => {
         fastify.log.error(error);
+        const err = error as { message?: string; statusCode?: number; name?: string };
 
         // Don't expose internal errors in production
         const message =
-            config.NODE_ENV === 'production' ? 'Internal Server Error' : error.message;
+            config.NODE_ENV === 'production'
+                ? 'Internal Server Error'
+                : err.message || 'Internal Server Error';
 
-        reply.status(error.statusCode || 500).send({
-            error: error.name || 'Error',
+        reply.status(err.statusCode || 500).send({
+            error: err.name || 'Error',
             message,
             requestId: request.requestId,
         });
@@ -147,6 +152,11 @@ Endpoints:
   GET  /dashboard
   GET  /health
   POST /v1/auth/register
+  GET  /v1/agents/stats
+  GET  /v1/agents
+  GET  /v1/agents/me
+  POST /v1/agents/verify/auto
+  POST /v1/agents/verify
   POST /v1/auth/keys
   GET  /v1/auth/keys
   DELETE /v1/auth/keys/:id
