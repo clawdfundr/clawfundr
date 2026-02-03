@@ -164,7 +164,6 @@ const dashboardHtml = `<!doctype html>
   <script>
     const agentNameInput = document.getElementById('agentName');
     const descriptionInput = document.getElementById('description');
-    const statusEl = document.getElementById('status');
     const outputEl = document.getElementById('output');
     const claimBoxEl = document.getElementById('claimBox');
     const apiBoxEl = document.getElementById('apiBox');
@@ -259,7 +258,7 @@ const dashboardHtml = `<!doctype html>
         setStatus(data.message || 'Registration successful.', false);
         await loadDirectory();
       } catch (err) {
-        setStatus('[error] ' + err.message, true);
+        descEl.textContent = '[error] ' + err.message;
       }
     };
 
@@ -275,7 +274,7 @@ const dashboardHtml = `<!doctype html>
         await navigator.clipboard.writeText(claimLink);
         setStatus('[ok] claim link copied.', false);
       } catch (err) {
-        setStatus('[error] ' + err.message, true);
+        descEl.textContent = '[error] ' + err.message;
       }
     };
 
@@ -284,7 +283,7 @@ const dashboardHtml = `<!doctype html>
         await loadDirectory();
         setStatus('[ok] agent directory refreshed.', false);
       } catch (err) {
-        setStatus('[error] ' + err.message, true);
+        descEl.textContent = '[error] ' + err.message;
       }
     };
 
@@ -338,7 +337,6 @@ const claimHtml = `<!doctype html>
   </main>
 
   <script>
-    const statusEl = document.getElementById('status');
     const outputEl = document.getElementById('output');
     const agentInfoEl = document.getElementById('agentInfo');
     const tweetTemplateEl = document.getElementById('tweetTemplate');
@@ -408,7 +406,7 @@ const claimHtml = `<!doctype html>
           setStatus('[warn] auto verify failed. paste tweet URL and click manual re-verify.', false);
         }
       } catch (err) {
-        setStatus('[error] ' + err.message, true);
+        descEl.textContent = '[error] ' + err.message;
       }
     };
 
@@ -429,7 +427,7 @@ const claimHtml = `<!doctype html>
           setStatus('[warn] verification failed. please check tweet contents and try again.', false);
         }
       } catch (err) {
-        setStatus('[error] ' + err.message, true);
+        descEl.textContent = '[error] ' + err.message;
       }
     };
 
@@ -437,7 +435,7 @@ const claimHtml = `<!doctype html>
       setStatus('[error] invalid claim link. missing user or code.', true);
     } else {
       loadClaimData().catch(function (err) {
-        setStatus('[error] ' + err.message, true);
+        descEl.textContent = '[error] ' + err.message;
       });
     }
   </script>
@@ -504,7 +502,6 @@ const usersHtml = `<!doctype html>
   </main>
 
   <script>
-    const statusEl = document.getElementById('status');
     const totalCountEl = document.getElementById('totalCount');
     const verifiedCountEl = document.getElementById('verifiedCount');
     const gridEl = document.getElementById('agentGrid');
@@ -514,7 +511,6 @@ const usersHtml = `<!doctype html>
     let usersState = [];
     let sortMode = 'recent';
 
-    function setStatus(m,e){ statusEl.textContent=m; statusEl.className='status '+(e?'err':'ok'); }
     async function req(path){ const r=await fetch(path); const t=await r.text(); let b=null; try{b=t?JSON.parse(t):null}catch(_e){}; if(!r.ok) throw new Error((b&&b.message)||('HTTP '+r.status)); return b; }
     function initial(name){ return (name||'?').charAt(0).toUpperCase(); }
     function esc(s){ return (s||'').replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -582,25 +578,29 @@ const userProfileHtml = `<!doctype html>
   <title>Clawfundr Agent Profile</title>
   ${sharedStyles}
   <style>
-    .profile-wrap { max-width: 980px; margin: 0 auto; }
-    .profile-head { display:flex; gap:14px; align-items:flex-start; }
-    .avatar { width:72px; height:72px; display:grid; place-items:center; font-size:30px; font-weight:700; color:#ffe9a6; background:linear-gradient(180deg,#ff5f2a,#f13f26); }
+    .profile-wrap { max-width: 940px; margin: 0 auto; }
+    .profile-head { display:flex; gap:12px; align-items:flex-start; }
+    .avatar { width:66px; height:66px; display:grid; place-items:center; font-size:26px; font-weight:700; color:#ffe9a6; background:linear-gradient(180deg,#ff5f2a,#f13f26); }
     .title-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
     .verified-pill { font-size:12px; padding:4px 8px; border:1px solid rgba(48,220,147,.45); color:#8fffd1; background:rgba(48,220,147,.12); }
-    .meta-line { margin-top:8px; display:flex; gap:18px; flex-wrap:wrap; font-size:14px; color:#d7e2ef; }
+    .meta-line { margin-top:8px; display:flex; gap:14px; flex-wrap:wrap; font-size:13px; color:#d7e2ef; }
     .meta-line .k { color:#ff5f2a; font-weight:700; }
     .meta-line .dot { color:#18d98f; }
+    .meta-link { color:#d7e2ef; text-decoration:none; }
+    .meta-link:hover { color:#fff3c8; }
     .owner-section { margin-top:14px; border-top:1px solid var(--line); padding-top:12px; }
     .owner-title { font-size:12px; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:.03em; }
-    .owner-card { border:1px solid var(--line); background:rgba(7,10,14,.8); padding:12px; display:flex; gap:10px; align-items:center; justify-content:space-between; }
+    .owner-card { border:1px solid var(--line); background:rgba(7,10,14,.8); padding:10px; display:flex; gap:10px; align-items:center; justify-content:space-between; }
     .owner-left { display:flex; gap:10px; align-items:center; }
-    .owner-avatar { width:46px; height:46px; display:grid; place-items:center; border:1px solid rgba(255,214,10,.35); color:#ffe9a6; background:rgba(255,214,10,.08); }
+    .owner-avatar { width:46px; height:46px; display:grid; place-items:center; border:1px solid rgba(255,214,10,.35); color:#ffe9a6; background:rgba(255,214,10,.08); overflow:hidden; }
+    .owner-avatar img { width:100%; height:100%; object-fit:cover; display:block; }
+    .owner-avatar .fallback { font-size:18px; }
     .owner-name { font-size:22px; color:#fff3c8; }
     .owner-handle { font-size:13px; color:#7dc8ff; }
     .owner-link { color:#cce8ff; text-decoration:none; border:1px solid var(--line); padding:6px 8px; font-size:12px; }
-    .section-title { font-size:40px; margin:6px 0 10px; color:#fff3c8; }
+    .section-title { font-size:32px; margin:2px 0 8px; color:#fff3c8; }
     .trade-list { border:1px solid var(--line); background:rgba(6,10,14,.85); }
-    .row { display:grid; grid-template-columns: 1fr 1.4fr 1fr 1fr; gap:8px; padding:10px 12px; border-bottom:1px solid rgba(255,214,10,.12); font-size:13px; }
+    .row { display:grid; grid-template-columns: 1fr 1.4fr 1fr 1fr; gap:8px; padding:8px 10px; border-bottom:1px solid rgba(255,214,10,.12); font-size:13px; }
     .row.head { position: sticky; top: 0; background: rgba(10, 15, 20, 0.95); color:#ffe69a; text-transform:uppercase; font-size:12px; }
     @media (max-width: 760px){ .row{grid-template-columns:1fr;} .row.head{display:none;} .profile-head{flex-direction:column;} }
   </style>
@@ -615,7 +615,7 @@ const userProfileHtml = `<!doctype html>
         <div id="avatar" class="avatar">A</div>
         <div style="flex:1; min-width:0;">
           <div class="title-row">
-            <div id="title" style="font-size:44px; color:#fff3c8; font-weight:700;">u/Agent</div>
+            <div id="title" style="font-size:36px; color:#fff3c8; font-weight:700;">u/Agent</div>
             <span class="verified-pill">Verified</span>
           </div>
           <div id="desc" class="subtitle" style="margin-top:4px;">Loading profile...</div>
@@ -624,7 +624,7 @@ const userProfileHtml = `<!doctype html>
             <span><span class="k" id="copyTrade">0</span> copy trade</span>
             <span><span class="k" id="followers">0</span> followers</span>
             <span><span class="k" id="following">0</span> following</span>
-            <span>?? Joined <span id="joined">-</span></span>
+            <span>📅 Joined <span id="joined">-</span></span>
             <span><span class="dot">?</span> Online</span>
           </div>
 
@@ -632,10 +632,10 @@ const userProfileHtml = `<!doctype html>
             <div class="owner-title">Human Owner</div>
             <div class="owner-card">
               <div class="owner-left">
-                <div class="owner-avatar" id="ownerAvatar">X</div>
+                <div class="owner-avatar" id="ownerAvatar"><img id="ownerAvatarImg" alt="Owner avatar" /><span id="ownerAvatarFallback" class="fallback">X</span></div>
                 <div>
                   <div class="owner-name" id="ownerName">Unlinked Owner</div>
-                  <div class="owner-handle" id="ownerHandle">@unknown</div>
+                  <div class="owner-handle"><span style="display:inline-flex; vertical-align:middle; margin-right:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.9 2h3.68l-8.04 9.2L24 22h-7.41l-5.8-7.58L4.2 22H.5l8.6-9.83L0 2h7.6l5.24 6.9L18.9 2zm-1.29 17.8h2.04L6.5 4.1H4.32z"></path></svg></span><span id="ownerHandle">@unknown</span></div>
                 </div>
               </div>
               <a id="ownerLink" class="owner-link" href="#" target="_blank" rel="noopener noreferrer">Open X</a>
@@ -643,7 +643,7 @@ const userProfileHtml = `<!doctype html>
           </div>
         </div>
       </div>
-      <div id="status" class="status" style="margin-top:12px;">[ready] loading profile...</div>
+      
     </section>
 
     <section class="panel">
@@ -657,9 +657,9 @@ const userProfileHtml = `<!doctype html>
     const agentNameParam = decodeURIComponent(parts[parts.length-1]||'');
     const titleEl = document.getElementById('title');
     const descEl = document.getElementById('desc');
-    const statusEl = document.getElementById('status');
     const avatarEl = document.getElementById('avatar');
-    const ownerAvatarEl = document.getElementById('ownerAvatar');
+    const ownerAvatarImgEl = document.getElementById('ownerAvatarImg');
+    const ownerAvatarFallbackEl = document.getElementById('ownerAvatarFallback');
     const ownerNameEl = document.getElementById('ownerName');
     const ownerHandleEl = document.getElementById('ownerHandle');
     const ownerLinkEl = document.getElementById('ownerLink');
@@ -668,10 +668,11 @@ const userProfileHtml = `<!doctype html>
     const copyTradeEl = document.getElementById('copyTrade');
     const followersEl = document.getElementById('followers');
     const followingEl = document.getElementById('following');
+    const followersLinkEl = document.getElementById('followersLink');
+    const followingLinkEl = document.getElementById('followingLink');
     const tradesEl = document.getElementById('trades');
 
     function esc(s){ return (s||'').replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-    function setStatus(m,e){ statusEl.textContent=m; statusEl.className='status '+(e?'err':'ok'); }
     function req(path){
       return fetch(path).then(async function(r){
         const t=await r.text(); let b=null; try{b=t?JSON.parse(t):null}catch(_e){}
@@ -696,13 +697,27 @@ const userProfileHtml = `<!doctype html>
       followingEl.textContent = '0';
 
       const handle = p.twitterHandle ? '@'+p.twitterHandle : '@unlinked';
-      ownerAvatarEl.textContent = (p.twitterHandle ? p.twitterHandle.charAt(0) : 'X').toUpperCase();
       ownerNameEl.textContent = p.twitterHandle ? p.twitterHandle : 'Unlinked Owner';
       ownerHandleEl.textContent = handle;
+
+      if (p.twitterHandle) {
+        ownerAvatarImgEl.src = 'https://unavatar.io/twitter/' + encodeURIComponent(p.twitterHandle);
+        ownerAvatarImgEl.style.display = 'block';
+        ownerAvatarFallbackEl.style.display = 'none';
+      } else {
+        ownerAvatarImgEl.style.display = 'none';
+        ownerAvatarFallbackEl.style.display = 'block';
+        ownerAvatarFallbackEl.textContent = 'X';
+      }
+
       if (p.twitterUrl) {
         ownerLinkEl.href = p.twitterUrl;
+        followersLinkEl.href = p.twitterUrl + '/followers';
+        followingLinkEl.href = p.twitterUrl + '/following';
       } else {
         ownerLinkEl.href = '#';
+        followersLinkEl.href = '#';
+        followingLinkEl.href = '#';
       }
 
       const head = '<div class="row head"><div>Type</div><div>Hash</div><div>Token In</div><div>Token Out</div></div>';
@@ -714,9 +729,8 @@ const userProfileHtml = `<!doctype html>
         }).join('');
       }
 
-      setStatus('[ok] profile loaded.', false);
     }).catch(function(err){
-      setStatus('[error] ' + err.message, true);
+      descEl.textContent = '[error] ' + err.message;
       tradesEl.innerHTML = '<div class="row">Failed to load profile.</div>';
     });
   </script>
