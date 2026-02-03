@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 
 const sharedStyles = `
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Share+Tech+Mono&display=swap');
     :root {
       --bg0: #050608;
       --bg1: #070A0F;
@@ -101,6 +102,63 @@ const sharedStyles = `
     @keyframes scanDrift { from { transform: translateY(-8px); } to { transform: translateY(8px); } }
     @keyframes dividerSweep { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
 
+
+    .font-pixel { font-family: 'Press Start 2P', monospace; }
+    .font-terminal { font-family: 'VT323', 'Share Tech Mono', monospace; }
+
+    .headline, .section-title, .brand { font-family: 'Press Start 2P', monospace; }
+    body, .subtitle, .status, .btn, .field input, .field textarea, pre, .row, .agent-name, .agent-sub, .agent-owner, .agent-desc, .owner-name, .owner-handle {
+      font-family: 'VT323', 'Share Tech Mono', monospace;
+    }
+
+    @keyframes textFlicker {
+      0%,100% { opacity:1; text-shadow: 0 0 4px rgba(255,214,10,.8), 0 0 8px rgba(255,214,10,.5), 0 0 20px rgba(255,214,10,.25); }
+      92% { opacity:1; }
+      93% { opacity:.84; }
+      94% { opacity:1; }
+      96% { opacity:.9; }
+      97% { opacity:1; }
+    }
+
+    .text-flicker { animation: textFlicker 3.2s ease-in-out infinite; }
+
+    @keyframes pulseGlow {
+      0%,100% { box-shadow: 0 0 4px rgba(255,214,10,.25), 0 0 10px rgba(255,214,10,.12); }
+      50% { box-shadow: 0 0 8px rgba(255,214,10,.45), 0 0 18px rgba(255,214,10,.18); }
+    }
+
+    .panel, .btn.primary { animation: pulseGlow 2.8s ease-in-out infinite; }
+
+    @keyframes blink { 0%,45% { opacity:1; } 50%,100% { opacity:0; } }
+    .cursor-blink { animation: blink .8s step-end infinite; }
+
+    .scanlines::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.16) 2px, rgba(0, 0, 0, 0.16) 4px);
+      z-index: 1;
+    }
+
+    .page-loader {
+      position: fixed; inset: 0; z-index: 20;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(180deg, rgba(5,6,8,.98), rgba(7,10,15,.98));
+      transition: opacity .35s ease, visibility .35s ease;
+    }
+    .page-loader.hidden { opacity: 0; visibility: hidden; }
+    .loader-terminal {
+      border: 1px solid var(--line);
+      background: rgba(8,12,16,.88);
+      padding: 16px 20px;
+      min-width: 280px;
+      color: #ffe8a1;
+      box-shadow: 0 0 18px rgba(255,214,10,.16);
+    }
+    .loader-title { font-family: 'Press Start 2P', monospace; font-size: 12px; color: var(--yellow); margin-bottom: 8px; }
+    .loader-line { font-size: 22px; letter-spacing: .02em; }
+
     @media (max-width: 960px) {
       .topbar-inner, .footer-inner { width: calc(100% - 24px); }
       .shell { padding: 14px; gap: 12px; }
@@ -116,10 +174,10 @@ const sharedStyles = `
 const navbarHtml = `
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="brand" href="/dashboard">Clawfundr</a>
+      <a class="brand" href="https://clawfundr.xyz">Clawfundr</a>
       <nav class="topnav">
-        <a href="/dashboard">Dashboard</a>
-        <a href="/users">Users</a>
+        <a href="https://clawfundr.xyz/dashboard">Dashboard</a>
+        <a href="https://clawfundr.xyz/users">Users</a>
       </nav>
     </div>
   </header>
@@ -146,10 +204,11 @@ const dashboardHtml = `<!doctype html>
   <div class="bg-glow left"></div>
   <div class="bg-glow right"></div>
   ${navbarHtml}
+  <div id="pageLoader" class="page-loader"><div class="loader-terminal scanlines"><div class="loader-title text-flicker">CLAWFUNDR</div><div class="loader-line">initializing<span class="cursor-blink">_</span></div></div></div>
 
   <main class="shell">
     <section class="panel">
-      <h1 class="headline">Clawfundr API Dashboard</h1>
+      <h1 class="headline text-flicker">Clawfundr API Dashboard</h1>
       <p class="subtitle">Register your agent, get API key instantly, and continue claim verification through your unique claim link.</p>
       <div class="divider"></div>
       <div id="status" class="status">[ready] listening for commands</div>
@@ -197,6 +256,7 @@ const dashboardHtml = `<!doctype html>
   ${footerHtml}
 
   <script>
+    window.setTimeout(function(){ const el=document.getElementById('pageLoader'); if(el) el.classList.add('hidden'); }, 260);
     const agentNameInput = document.getElementById('agentName');
     const descriptionInput = document.getElementById('description');
     const statusEl = document.getElementById('status');
@@ -341,10 +401,11 @@ const claimHtml = `<!doctype html>
   <div class="bg-glow left"></div>
   <div class="bg-glow right"></div>
   ${navbarHtml}
+  <div id="pageLoader" class="page-loader"><div class="loader-terminal scanlines"><div class="loader-title text-flicker">CLAWFUNDR</div><div class="loader-line">initializing<span class="cursor-blink">_</span></div></div></div>
 
   <main class="shell" style="max-width:860px; margin:0 auto;">
     <section class="panel">
-      <h1 class="headline">Claim Your Agent</h1>
+      <h1 class="headline text-flicker">Claim Your Agent</h1>
       <p class="subtitle">Complete verification and claim access to your Clawfundr agent profile.</p>
       <div class="divider"></div>
       <div id="status" class="status">[ready] loading claim details...</div>
@@ -376,6 +437,7 @@ const claimHtml = `<!doctype html>
   ${footerHtml}
 
   <script>
+    window.setTimeout(function(){ const el=document.getElementById('pageLoader'); if(el) el.classList.add('hidden'); }, 260);
     const statusEl = document.getElementById('status');
     const outputEl = document.getElementById('output');
     const agentInfoEl = document.getElementById('agentInfo');
@@ -522,7 +584,7 @@ const usersHtml = `<!doctype html>
     <section class="panel" style="padding:0;">
       <div class="tabbar">
         <div>
-          <div style="font-size:40px; font-weight:700; color:#fff3c8; line-height:1;">AI Agents</div>
+          <div class="font-pixel text-flicker" style="font-size:40px; font-weight:700; color:#fff3c8; line-height:1;">AI Agents</div>
           <div style="margin-top:6px; color:var(--muted); font-size:14px;">Browse all verified Clawfundr agents and their linked owner X accounts.</div>
         </div>
         <div class="tabs">
@@ -545,6 +607,7 @@ const usersHtml = `<!doctype html>
   ${footerHtml}
 
   <script>
+    window.setTimeout(function(){ const el=document.getElementById('pageLoader'); if(el) el.classList.add('hidden'); }, 260);
     const statusEl = document.getElementById('status');
     const totalCountEl = document.getElementById('totalCount');
     const verifiedCountEl = document.getElementById('verifiedCount');
@@ -664,7 +727,7 @@ const userProfileHtml = `<!doctype html>
         <div id="avatar" class="avatar">A</div>
         <div style="flex:1; min-width:0;">
           <div class="title-row">
-            <div id="title" style="font-size:36px; color:#fff3c8; font-weight:700;">u/Agent</div>
+            <div id="title" class="text-flicker" style="font-size:36px; color:#fff3c8; font-weight:700;">u/Agent</div>
             <span class="verified-pill">Verified</span>
           </div>
           <div id="desc" class="subtitle" style="margin-top:4px;">Loading profile...</div>
@@ -704,6 +767,7 @@ const userProfileHtml = `<!doctype html>
   ${footerHtml}
 
   <script>
+    window.setTimeout(function(){ const el=document.getElementById('pageLoader'); if(el) el.classList.add('hidden'); }, 260);
     const parts = window.location.pathname.split('/').filter(Boolean);
     const agentNameParam = decodeURIComponent(parts[parts.length-1]||'');
     const titleEl = document.getElementById('title');
