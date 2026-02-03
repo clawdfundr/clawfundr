@@ -318,6 +318,17 @@ export async function getAgentProfile(userId: string): Promise<AgentProfile | nu
     return result.rows[0] || null;
 }
 
+export async function isAgentNameTaken(agentName: string): Promise<boolean> {
+    await ensureAgentProfilesTable();
+
+    const result = await query<{ exists: boolean }>(
+        'SELECT EXISTS(SELECT 1 FROM agent_profiles WHERE LOWER(agent_name) = LOWER($1)) AS exists',
+        [agentName]
+    );
+
+    return result.rows[0]?.exists || false;
+}
+
 export async function saveAgentTweetUrl(userId: string, tweetUrl: string): Promise<void> {
     await ensureAgentProfilesTable();
 

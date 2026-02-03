@@ -8,6 +8,7 @@ import {
     getUserApiKeys,
     revokeApiKey,
     upsertAgentProfile,
+    isAgentNameTaken,
 } from '../db/client';
 import { getEnvConfig } from '../config/env';
 
@@ -77,6 +78,14 @@ export async function authRoutes(fastify: FastifyInstance) {
             }
 
             try {
+                const taken = await isAgentNameTaken(result.data.agentName);
+                if (taken) {
+                    return (reply as any).status(409).send({
+                        error: 'Conflict',
+                        message: 'Agent name already registered. Please choose another name.',
+                    });
+                }
+
                 const user = await createUser();
 
                 const apiKey = randomBytes(32).toString('hex');

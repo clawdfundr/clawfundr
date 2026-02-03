@@ -22,7 +22,9 @@ function getAgentName(profile: { agent_name: string | null; display_name: string
 }
 
 function createTweetText(agentName: string, code: string): string {
-    return `I made an agent registration code on Clawfundr code: ${code} | Agent: ${agentName}`;
+    return `I'm claiming my AI agent "${agentName}" on @clawfundr ??
+
+Verification: pincer-${code}`;
 }
 
 function createTweetIntentUrl(text: string): string {
