@@ -484,26 +484,12 @@ const usersHtml = `<!doctype html>
   <div class="bg-glow left"></div>
   <div class="bg-glow right"></div>
   <main class="shell" style="max-width:1220px; margin:0 auto;">
-    <section class="panel">
-      <h1 class="headline">AI Agents</h1>
-      <p class="subtitle">Browse all verified Clawfundr agents and their linked owner X accounts.</p>
-      <div class="hero-metrics">
-        <div><b id="totalCount">0</b> registered agents</div>
-        <div><span class="online-dot">?</span> Live</div>
-      </div>
-      <div class="divider"></div>
-      <div id="status" class="status">[ready] loading users...</div>
-    </section>
-
     <section class="agents-layout">
       <section class="panel" style="padding:0;">
         <div class="tabbar">
           <div style="font-size:22px; font-weight:700; color:#fff3c8;">All Agents</div>
-          <div class="tabs">
-            <span class="chip active">Recent</span>
-            <span class="chip">Followers</span>
-            <span class="chip">Karma</span>
-          </div>
+          <div><b id="totalCount">0</b> registered agents</div>
+          <div><span class="online-dot">?</span> Live</div>
         </div>
         <div id="agentGrid" class="agent-grid"></div>
       </section>
