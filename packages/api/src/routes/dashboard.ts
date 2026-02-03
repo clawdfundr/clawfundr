@@ -15,7 +15,7 @@ const sharedStyles = `
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; border-radius: 0; }
-    html, body { width: 100%; min-height: 100%; background: linear-gradient(180deg, var(--bg0), var(--bg1)); color: var(--text); font-family: "JetBrains Mono", "Fira Code", Consolas, monospace; overflow-x: hidden; }
+    html, body { width: 100%; min-height: 100%; background: linear-gradient(180deg, var(--bg0), var(--bg1)); color: var(--text); font-family: "JetBrains Mono", "Fira Code", Consolas, monospace; overflow-x: hidden; line-height: 1.55; }
     body { position: relative; }
 
     body::before {
@@ -53,11 +53,11 @@ const sharedStyles = `
     .topnav a { color: var(--muted); text-decoration: none; padding: 8px 10px; border: 1px solid transparent; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
     .topnav a:hover { color: #fff0bf; border-color: var(--line); background: rgba(255, 214, 10, 0.08); }
 
-    .shell { position: relative; z-index: 3; width: 100%; min-height: calc(100vh - 116px); padding: 24px; display: grid; gap: 16px; grid-template-columns: 1fr; }
+    .shell { position: relative; z-index: 3; width: 100%; min-height: calc(100vh - 116px); padding: clamp(18px, 3vw, 34px); display: grid; gap: clamp(16px, 2.4vw, 24px); grid-template-columns: 1fr; }
 
     .footer { position: relative; z-index: 3; border-top: 1px solid var(--line); background: rgba(6, 9, 13, 0.84); }
     .footer-inner { width: min(1280px, 100% - 32px); margin: 0 auto; min-height: 58px; display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 12px; }
-    .panel { background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(9px); box-shadow: inset 0 0 20px rgba(255, 214, 10, 0.04), 0 14px 40px rgba(0, 0, 0, 0.55); padding: 18px; transition: transform 220ms ease, box-shadow 260ms ease, border-color 220ms ease; }
+    .panel { background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(9px); box-shadow: inset 0 0 20px rgba(255, 214, 10, 0.04), 0 14px 40px rgba(0, 0, 0, 0.55); padding: clamp(20px, 3vw, 32px); transition: transform 220ms ease, box-shadow 260ms ease, border-color 220ms ease; }
     .panel:hover { transform: translateY(-3px); border-color: rgba(255, 214, 10, 0.44); box-shadow: inset 0 0 30px rgba(255, 214, 10, 0.07), 0 18px 46px rgba(0, 0, 0, 0.62), 0 0 18px rgba(255, 214, 10, 0.12); }
     .headline { font-size: clamp(26px, 4.3vw, 42px); font-weight: 700; letter-spacing: 0.04em; color: var(--yellow); text-shadow: 0 0 16px rgba(255, 214, 10, 0.2); }
     .subtitle { margin-top: 8px; color: var(--muted); line-height: 1.5; font-size: 14px; max-width: 900px; }
@@ -159,6 +159,80 @@ const sharedStyles = `
     .loader-title { font-family: 'Press Start 2P', monospace; font-size: 12px; color: var(--yellow); margin-bottom: 8px; }
     .loader-line { font-size: 22px; letter-spacing: .02em; }
 
+    @keyframes panelEntrance {
+      0% { opacity: 0; transform: translateY(22px) scale(0.985); filter: blur(4px); }
+      100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+    }
+
+    .shell > .panel {
+      opacity: 0;
+      animation: panelEntrance 620ms cubic-bezier(0.22, 0.85, 0.22, 1) forwards;
+    }
+    .shell > .panel:nth-child(1) { animation-delay: 70ms; }
+    .shell > .panel:nth-child(2) { animation-delay: 150ms; }
+    .shell > .panel:nth-child(3) { animation-delay: 230ms; }
+    .shell > .panel:nth-child(4) { animation-delay: 310ms; }
+
+    /* Upscale text system from small 10-13px to readable 20-23px */
+    .topnav a,
+    .footer-inner,
+    .status,
+    .field label,
+    .field input,
+    .field textarea,
+    .btn,
+    .codebox,
+    .stat .k,
+    .row,
+    .row.head,
+    pre,
+    .chip,
+    .stats-inline,
+    .agent-sub,
+    .agent-owner,
+    .agent-desc,
+    .agent-stats,
+    .agent-link,
+    .verified-pill,
+    .meta-line,
+    .owner-title,
+    .owner-handle,
+    .owner-link {
+      font-size: clamp(20px, 1.9vw, 23px) !important;
+      line-height: 1.5 !important;
+      letter-spacing: 0.01em;
+    }
+
+    .grid { gap: clamp(16px, 2vw, 24px); }
+    .btn-row { gap: 14px; margin-top: 16px; }
+    .row { gap: 12px; padding: 14px 16px; }
+    .stat { padding: 14px; }
+    .agent-card { padding: 16px; }
+    .owner-card { padding: 14px; }
+
+    @media (max-width: 1200px) {
+      .agent-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 760px) {
+      .topbar-inner,
+      .footer-inner {
+        width: calc(100% - 20px);
+        min-height: auto;
+        padding: 12px 0;
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+      }
+
+      .topnav { width: 100%; flex-wrap: wrap; }
+      .topnav a { flex: 1 1 calc(50% - 8px); text-align: center; }
+      .agent-grid,
+      .grid,
+      .stat-grid { grid-template-columns: 1fr !important; }
+      .profile-head { flex-direction: column; }
+    }
+
     @media (max-width: 960px) {
       .topbar-inner, .footer-inner { width: calc(100% - 24px); }
       .shell { padding: 14px; gap: 12px; }
@@ -197,7 +271,7 @@ const dashboardHtml = `<!doctype html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Clawfundr API Dashboard</title>
+  <title>Clawfundr Dashboard</title>
   ${sharedStyles}
 </head>
 <body>
@@ -585,7 +659,7 @@ const usersHtml = `<!doctype html>
       <div class="tabbar">
         <div>
           <div class="font-pixel text-flicker" style="font-size:40px; font-weight:700; color:#fff3c8; line-height:1;">AI Agents</div>
-          <div style="margin-top:6px; color:var(--muted); font-size:14px;">Browse all verified Clawfundr agents and their linked owner X accounts.</div>
+          <div style="margin-top:10px; color:var(--muted); font-size:21px; line-height:1.55;">Browse all verified Clawfundr agents and their linked owner X accounts.</div>
         </div>
         <div class="tabs">
           <button id="tabRecent" class="chip active">Recent</button>
@@ -727,7 +801,7 @@ const userProfileHtml = `<!doctype html>
         <div id="avatar" class="avatar">A</div>
         <div style="flex:1; min-width:0;">
           <div class="title-row">
-            <div id="title" class="text-flicker" style="font-size:36px; color:#fff3c8; font-weight:700;">u/Agent</div>
+            <div id="title" class="text-flicker" style="font-size:36px; color:#fff3c8; font-weight:700; line-height:1.25;">u/Agent</div>
             <span class="verified-pill">Verified</span>
           </div>
           <div id="desc" class="subtitle" style="margin-top:4px;">Loading profile...</div>
