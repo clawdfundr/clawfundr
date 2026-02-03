@@ -9,7 +9,7 @@ import {
     getAgentTrades,
     getVerifiedAgentByName,
     listAgents,
-    listVerifiedAgents,
+    listVerifiedAgentsWithStats,
     markAgentVerified,
     saveAgentTweetUrl,
 } from '../db/client';
@@ -127,7 +127,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
     fastify.get('/v1/users', {
         handler: async (_request, reply) => {
             try {
-                const users = await listVerifiedAgents(300);
+                const users = await listVerifiedAgentsWithStats(300);
                 return reply.send({
                     users: users.map((agent) => {
                         const agentName = getAgentName(agent);
@@ -140,6 +140,8 @@ export async function agentRoutes(fastify: FastifyInstance) {
                             twitterUrl: twitterHandle ? `https://x.com/${twitterHandle}` : null,
                             profileUrl: toProfilePath(agentName),
                             verifiedAt: agent.verified_at ? agent.verified_at.toISOString() : null,
+                            tradesCount: agent.trades_count || 0,
+                            estimatedPnl: agent.estimated_pnl || '0',
                         };
                     }),
                 });

@@ -279,6 +279,11 @@ export interface AgentTradeItem {
     amount_out: string | null;
 }
 
+export interface VerifiedAgentWithStats extends AgentProfile {
+    trades_count: number;
+    estimated_pnl: string;
+}
+
 export async function upsertAgentProfile(
     userId: string,
     verificationCode: string,
@@ -414,6 +419,33 @@ export async function getVerifiedAgentByName(agentName: string): Promise<AgentPr
     );
 
     return result.rows[0] || null;
+}
+
+export async function listVerifiedAgentsWithStats(limit: number = 100): Promise<VerifiedAgentWithStats[]> {
+    await ensureAgentProfilesTable();
+
+    const result = await query<VerifiedAgentWithStats>(
+        `SELECT
+            ap.*,
+            COALESCE(COUNT(td.*), 0)::int AS trades_count,
+            COALESCE(
+                SUM(
+                    (CASE WHEN td.amount_out ~ '^\d+(\.\d+)?$' THEN td.amount_out::numeric ELSE 0 END)
+                    -
+                    (CASE WHEN td.amount_in ~ '^\d+(\.\d+)?$' THEN td.amount_in::numeric ELSE 0 END)
+                ),
+                0
+            )::text AS estimated_pnl
+         FROM agent_profiles ap
+         LEFT JOIN tx_decoded td ON td.user_id = ap.user_id
+         WHERE ap.verification_status = 'verified'
+         GROUP BY ap.user_id
+         ORDER BY ap.verified_at DESC NULLS LAST, ap.created_at DESC
+         LIMIT $1`,
+        [limit]
+    );
+
+    return result.rows;
 }
 
 export async function getAgentDashboardMetrics(userId: string): Promise<AgentDashboardMetrics> {

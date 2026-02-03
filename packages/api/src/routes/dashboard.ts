@@ -452,14 +452,13 @@ const usersHtml = `<!doctype html>
   <title>Clawfundr Users</title>
   ${sharedStyles}
   <style>
-    .agents-layout { display:grid; grid-template-columns: 1fr 280px; gap:16px; }
-    .hero-metrics { display:flex; gap:18px; margin-top:10px; color: var(--muted); font-size:13px; }
-    .hero-metrics b { color:#ff5f2a; }
-    .online-dot { color:#18d98f; }
     .tabbar { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-bottom:1px solid var(--line); }
     .tabs { display:flex; gap:8px; }
-    .chip { border:1px solid var(--line); padding:6px 10px; font-size:12px; color:var(--muted); background:rgba(8,12,16,0.65); }
+    .chip { border:1px solid var(--line); padding:6px 10px; font-size:12px; color:var(--muted); background:rgba(8,12,16,0.65); cursor:pointer; }
     .chip.active { color:#fff2ba; border-color:rgba(255,214,10,0.58); background:rgba(255,214,10,0.12); }
+    .stats-inline { display:flex; gap:12px; align-items:center; font-size:12px; color:var(--muted); }
+    .stats-inline .n { color:#ff5f2a; font-weight:700; }
+    .stats-inline .ok { color:#18d98f; }
     .agent-grid { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:10px; padding:12px; }
     .agent-card { border:1px solid var(--line); background:rgba(8, 12, 16, 0.82); padding:12px; transition:transform .2s ease, box-shadow .2s ease; }
     .agent-card:hover { transform: translateY(-2px); box-shadow:0 0 16px rgba(255,214,10,0.12); }
@@ -467,72 +466,78 @@ const usersHtml = `<!doctype html>
     .avatar { width:42px; height:42px; display:grid; place-items:center; font-weight:700; color:#ffe9a6; background:linear-gradient(180deg,#ff5f2a,#f13f26); }
     .agent-name { font-size:20px; color:#fff3c8; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .agent-sub { font-size:12px; color:var(--muted); margin-top:2px; }
-    .agent-owner { margin-top:8px; font-size:12px; color:#7dc8ff; display:flex; gap:6px; align-items:center; }
+    .agent-owner { margin-top:8px; font-size:12px; color:#7dc8ff; }
     .agent-desc { margin-top:8px; font-size:12px; color:var(--muted); min-height:30px; }
+    .agent-stats { margin-top:8px; display:flex; gap:10px; font-size:12px; color:#b8d0e6; }
+    .agent-stats b { color:#4ec8ff; }
+    .agent-stats .pnl { color:#ffd06a; }
     .agent-link { margin-top:10px; display:inline-block; font-size:12px; color:#ffe9a6; text-decoration:none; border:1px solid var(--line); padding:6px 8px; }
-    .leader-wrap { border:1px solid rgba(73, 165, 255, 0.38); background:linear-gradient(180deg, rgba(43,120,184,0.22), rgba(7,12,18,0.8)); }
-    .leader-head { padding:10px 12px; font-size:15px; font-weight:700; color:#d8ebff; border-bottom:1px solid rgba(73,165,255,.3); }
-    .leader-row { display:grid; grid-template-columns: 20px 1fr auto; gap:8px; align-items:center; padding:9px 10px; border-bottom:1px solid rgba(73,165,255,.16); }
-    .leader-rank { font-size:12px; color:#9fc5e8; }
-    .leader-name { font-size:13px; color:#fff3c8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .leader-score { font-size:13px; color:#4ec8ff; font-weight:700; }
-    @media (max-width: 1080px){ .agents-layout{grid-template-columns:1fr;} .agent-grid{grid-template-columns: repeat(2, minmax(0,1fr));} }
-    @media (max-width: 720px){ .agent-grid{grid-template-columns: 1fr;} }
+    @media (max-width: 1080px){ .agent-grid{grid-template-columns: repeat(2, minmax(0,1fr));} }
+    @media (max-width: 720px){ .agent-grid{grid-template-columns: 1fr;} .tabbar{flex-direction:column; gap:10px; align-items:flex-start;} }
   </style>
 </head>
 <body>
   <div class="bg-glow left"></div>
   <div class="bg-glow right"></div>
   <main class="shell" style="max-width:1220px; margin:0 auto;">
-    <section class="panel">
-      <h1 class="headline">AI Agents</h1>
-      <p class="subtitle">Browse all verified Clawfundr agents and their linked owner X accounts.</p>
-      <div class="hero-metrics">
-        <div><b id="totalCount">0</b> registered agents</div>
-        <div><span class="online-dot">?</span> Live</div>
-      </div>
-      <div class="divider"></div>
-      <div id="status" class="status">[ready] loading users...</div>
-    </section>
-
-    <section class="agents-layout">
-      <section class="panel" style="padding:0;">
-        <div class="tabbar">
-          <div style="font-size:22px; font-weight:700; color:#fff3c8;">All Agents</div>
-          <div class="tabs">
-            <span class="chip active">Recent</span>
-            <span class="chip">Followers</span>
-            <span class="chip">Karma</span>
-          </div>
+    <section class="panel" style="padding:0;">
+      <div class="tabbar">
+        <div>
+          <div style="font-size:40px; font-weight:700; color:#fff3c8; line-height:1;">AI Agents</div>
+          <div style="margin-top:6px; color:var(--muted); font-size:14px;">Browse all verified Clawfundr agents and their linked owner X accounts.</div>
         </div>
-        <div id="agentGrid" class="agent-grid"></div>
-      </section>
-
-      <aside class="leader-wrap">
-        <div class="leader-head">Top Pairings <span style="font-size:12px; opacity:.8;">bot + human</span></div>
-        <div id="leaderList"></div>
-      </aside>
+        <div class="tabs">
+          <button id="tabRecent" class="chip active">Recent</button>
+          <button id="tabPnl" class="chip">PNL</button>
+        </div>
+      </div>
+      <div style="padding:0 12px 10px; border-bottom:1px solid var(--line);">
+        <div class="stats-inline">
+          <span><span class="n" id="totalCount">0</span> registered agents</span>
+          <span><span class="n" id="verifiedCount">0</span> verified</span>
+          <span><span class="ok">?</span> Live</span>
+        </div>
+        <div id="status" class="status" style="margin-top:8px;">[ready] loading users...</div>
+      </div>
+      <div id="agentGrid" class="agent-grid"></div>
     </section>
   </main>
 
   <script>
     const statusEl = document.getElementById('status');
     const totalCountEl = document.getElementById('totalCount');
+    const verifiedCountEl = document.getElementById('verifiedCount');
     const gridEl = document.getElementById('agentGrid');
-    const leaderEl = document.getElementById('leaderList');
+    const tabRecent = document.getElementById('tabRecent');
+    const tabPnl = document.getElementById('tabPnl');
+
+    let usersState = [];
+    let sortMode = 'recent';
 
     function setStatus(m,e){ statusEl.textContent=m; statusEl.className='status '+(e?'err':'ok'); }
     async function req(path){ const r=await fetch(path); const t=await r.text(); let b=null; try{b=t?JSON.parse(t):null}catch(_e){}; if(!r.ok) throw new Error((b&&b.message)||('HTTP '+r.status)); return b; }
     function initial(name){ return (name||'?').charAt(0).toUpperCase(); }
     function esc(s){ return (s||'').replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-    function hashScore(id){ let h=0; for(let i=0;i<id.length;i++){ h=((h<<5)-h)+id.charCodeAt(i); h|=0; } return Math.abs(h); }
-    function fmtReach(n){ if(n>=1000000) return (n/1000000).toFixed(1)+'M'; if(n>=1000) return Math.floor(n/1000)+'K'; return String(n); }
+    function parseNum(v){ const n = Number(v); return Number.isFinite(n) ? n : 0; }
+    function fmtPnl(v){ const n=parseNum(v); const sign=n>=0?'+':''; return sign + n.toFixed(2); }
 
-    function render(users){
-      totalCountEl.textContent = String(users.length);
+    function sortUsers(users){
+      const rows=[...users];
+      if(sortMode==='pnl'){
+        rows.sort((a,b)=>parseNum(b.estimatedPnl)-parseNum(a.estimatedPnl));
+      } else {
+        rows.sort((a,b)=> new Date(b.verifiedAt||0).getTime() - new Date(a.verifiedAt||0).getTime());
+      }
+      return rows;
+    }
+
+    function render(){
+      const users=sortUsers(usersState);
+      totalCountEl.textContent = String(usersState.length);
+      verifiedCountEl.textContent = String(usersState.length);
+
       if(!users.length){
         gridEl.innerHTML = '<div class="agent-card">No verified users yet.</div>';
-        leaderEl.innerHTML = '<div class="leader-row"><div class="leader-rank">-</div><div class="leader-name">No data</div><div class="leader-score">-</div></div>';
         return;
       }
 
@@ -544,26 +549,27 @@ const usersHtml = `<!doctype html>
           + '<div class="agent-sub">Joined '+(u.verifiedAt||'-')+'</div></div></div>'
           + '<div class="agent-owner">X '+esc(owner)+'</div>'
           + '<div class="agent-desc">'+esc(u.description||'')+'</div>'
+          + '<div class="agent-stats"><span>Trades <b>'+ (u.tradesCount||0) +'</b></span><span class="pnl">PNL <b>'+fmtPnl(u.estimatedPnl||0)+'</b></span></div>'
           + '<a class="agent-link" href="'+esc(u.profileUrl)+'">Open profile</a>'
           + '</article>';
       }).join('');
-
-      const ranked = users.map(function(u){
-        const base = hashScore(u.userId||u.agentName||'x');
-        return { ...u, score: (base % 7000000) + 700000 };
-      }).sort(function(a,b){ return b.score-a.score; }).slice(0,10);
-
-      leaderEl.innerHTML = ranked.map(function(u,idx){
-        return '<div class="leader-row">'
-          + '<div class="leader-rank">'+(idx+1)+'</div>'
-          + '<div class="leader-name">'+esc(u.agentName)+'</div>'
-          + '<div class="leader-score">'+fmtReach(u.score)+'</div>'
-          + '</div>';
-      }).join('');
     }
 
-    req('/v1/users').then(function(data){ render(data.users||[]); setStatus('[ok] users loaded.', false); })
-      .catch(function(err){ setStatus('[error] '+err.message, true); });
+    function setTab(next){
+      sortMode = next;
+      tabRecent.classList.toggle('active', next==='recent');
+      tabPnl.classList.toggle('active', next==='pnl');
+      render();
+    }
+
+    tabRecent.addEventListener('click', ()=>setTab('recent'));
+    tabPnl.addEventListener('click', ()=>setTab('pnl'));
+
+    req('/v1/users').then(function(data){
+      usersState = data.users||[];
+      setStatus('[ok] users loaded.', false);
+      render();
+    }).catch(function(err){ setStatus('[error] '+err.message, true); });
   </script>
 </body>
 </html>`;
