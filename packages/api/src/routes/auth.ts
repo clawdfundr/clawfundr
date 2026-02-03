@@ -34,7 +34,13 @@ function generateVerificationCode(): string {
 }
 
 function buildClaimLink(baseUrl: string, userId: string, code: string): string {
-    const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    let base = (baseUrl || '').trim().replace(/\/+$/, '');
+
+    // Accept either https://clawfundr.xyz or https://clawfundr.xyz/claim
+    if (!/\/claim$/i.test(base)) {
+        base = `${base}/claim`;
+    }
+
     return `${base}/${userId}?code=${encodeURIComponent(code)}`;
 }
 
