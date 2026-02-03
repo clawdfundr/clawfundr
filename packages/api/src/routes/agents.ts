@@ -51,26 +51,56 @@ async function getXPublicMetrics(handle: string | null): Promise<XPublicMetrics 
     if (!handle) return null;
 
     const bearer = process.env.X_BEARER_TOKEN || process.env.TWITTER_BEARER_TOKEN;
-    if (!bearer) return null;
 
-    const endpoint = `https://api.x.com/2/users/by/username/${encodeURIComponent(handle)}?user.fields=public_metrics`;
+    // Preferred: official v2 API with bearer token.
+    if (bearer) {
+        const endpoints = [
+            `https://api.x.com/2/users/by/username/${encodeURIComponent(handle)}?user.fields=public_metrics`,
+            `https://api.twitter.com/2/users/by/username/${encodeURIComponent(handle)}?user.fields=public_metrics`,
+        ];
 
+        for (const endpoint of endpoints) {
+            try {
+                const res = await fetch(endpoint, {
+                    headers: { Authorization: `Bearer ${bearer}` },
+                });
+
+                if (!res.ok) continue;
+
+                const payload = (await res.json()) as {
+                    data?: { public_metrics?: { followers_count?: number; following_count?: number } };
+                };
+
+                const metrics = payload.data?.public_metrics;
+                if (metrics) {
+                    return {
+                        followersCount: Number(metrics.followers_count || 0),
+                        followingCount: Number(metrics.following_count || 0),
+                    };
+                }
+            } catch {
+                // try next endpoint/fallback
+            }
+        }
+    }
+
+    // Fallback: public syndication endpoint (no bearer needed).
     try {
-        const res = await fetch(endpoint, {
-            headers: { Authorization: `Bearer ${bearer}` },
-        });
+        const fallbackEndpoint = `https://cdn.syndication.twimg.com/widgets/followbutton/info.json?screen_names=${encodeURIComponent(handle)}`;
+        const res = await fetch(fallbackEndpoint);
         if (!res.ok) return null;
 
-        const payload = (await res.json()) as {
-            data?: { public_metrics?: { followers_count?: number; following_count?: number } };
-        };
+        const payload = (await res.json()) as Array<{
+            followers_count?: number;
+            friends_count?: number;
+        }>;
 
-        const metrics = payload.data?.public_metrics;
-        if (!metrics) return null;
+        const first = payload?.[0];
+        if (!first) return null;
 
         return {
-            followersCount: Number(metrics.followers_count || 0),
-            followingCount: Number(metrics.following_count || 0),
+            followersCount: Number(first.followers_count || 0),
+            followingCount: Number(first.friends_count || 0),
         };
     } catch {
         return null;
