@@ -45,6 +45,38 @@ function isValidTweetUrl(url: string): boolean {
     return /^https?:\/\/(?:www\.)?(?:x|twitter)\.com\/[A-Za-z0-9_]{1,15}\/status\/\d+/i.test(url);
 }
 
+type XPublicMetrics = { followersCount: number; followingCount: number };
+
+async function getXPublicMetrics(handle: string | null): Promise<XPublicMetrics | null> {
+    if (!handle) return null;
+
+    const bearer = process.env.X_BEARER_TOKEN || process.env.TWITTER_BEARER_TOKEN;
+    if (!bearer) return null;
+
+    const endpoint = `https://api.x.com/2/users/by/username/${encodeURIComponent(handle)}?user.fields=public_metrics`;
+
+    try {
+        const res = await fetch(endpoint, {
+            headers: { Authorization: `Bearer ${bearer}` },
+        });
+        if (!res.ok) return null;
+
+        const payload = (await res.json()) as {
+            data?: { public_metrics?: { followers_count?: number; following_count?: number } };
+        };
+
+        const metrics = payload.data?.public_metrics;
+        if (!metrics) return null;
+
+        return {
+            followersCount: Number(metrics.followers_count || 0),
+            followingCount: Number(metrics.following_count || 0),
+        };
+    } catch {
+        return null;
+    }
+}
+
 async function verifyTweetContainsCode(tweetUrl: string, verificationCode: string) {
     if (!isValidTweetUrl(tweetUrl)) {
         return { ok: false, reason: 'Tweet URL must be a valid x.com/twitter.com status link.' };
@@ -176,6 +208,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
 
                 const normalizedName = getAgentName(profile);
                 const twitterHandle = getTwitterHandle(profile.tweet_url);
+                const xMetrics = await getXPublicMetrics(twitterHandle);
 
                 return reply.send({
                     profile: {
@@ -188,6 +221,8 @@ export async function agentRoutes(fastify: FastifyInstance) {
                         twitterHandle,
                         twitterUrl: twitterHandle ? `https://x.com/${twitterHandle}` : null,
                         tweetUrl: profile.tweet_url,
+                        twitterFollowers: xMetrics?.followersCount ?? null,
+                        twitterFollowing: xMetrics?.followingCount ?? null,
                     },
                     metrics,
                     skillUsage,

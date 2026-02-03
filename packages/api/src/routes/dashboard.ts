@@ -210,6 +210,63 @@ const sharedStyles = `
     .agent-card { padding: 16px; }
     .owner-card { padding: 14px; }
 
+
+    /* Dashboard: fit desktop in one viewport without page scroll */
+    .dashboard-shell {
+      height: calc(100vh - 116px);
+      padding: 12px 16px;
+      gap: 12px;
+      overflow: hidden;
+      align-content: stretch;
+    }
+    .dashboard-shell .panel {
+      padding: 14px;
+      min-height: 0;
+    }
+    .dashboard-shell .headline { font-size: clamp(20px, 3vw, 32px); }
+    .dashboard-shell .subtitle { font-size: 14px; line-height: 1.45; margin-top: 6px; }
+    .dashboard-shell .status,
+    .dashboard-shell .field label,
+    .dashboard-shell .field input,
+    .dashboard-shell .field textarea,
+    .dashboard-shell .btn,
+    .dashboard-shell .codebox,
+    .dashboard-shell .stat .k,
+    .dashboard-shell .stat .v,
+    .dashboard-shell .row,
+    .dashboard-shell .row.head,
+    .dashboard-shell pre {
+      font-size: clamp(12px, 0.95vw, 14px) !important;
+      line-height: 1.35 !important;
+    }
+    .dashboard-shell .field textarea { min-height: 70px; }
+    .dashboard-shell .btn-row { margin-top: 10px; gap: 8px; }
+    .dashboard-shell .codebox { margin-top: 8px; padding: 9px 10px; }
+    .dashboard-shell .stat { padding: 10px; }
+    .dashboard-shell .stat .v { margin-top: 2px; }
+    .dashboard-shell .list { max-height: 210px; }
+    .dashboard-shell .terminal { min-height: 135px; }
+    .dashboard-shell pre { max-height: 165px; padding: 10px; }
+
+    @media (min-width: 1200px) {
+      .dashboard-shell {
+        grid-template-columns: 1.25fr 0.95fr;
+        grid-template-areas:
+          "hero hero"
+          "form stats"
+          "form log";
+        grid-template-rows: auto 1fr 1fr;
+      }
+      .dashboard-shell .panel-hero { grid-area: hero; }
+      .dashboard-shell .panel-form { grid-area: form; overflow: auto; }
+      .dashboard-shell .panel-stats { grid-area: stats; overflow: auto; }
+      .dashboard-shell .panel-log { grid-area: log; overflow: auto; }
+    }
+
+    @media (max-width: 1199px) {
+      .dashboard-shell { height: auto; overflow: visible; }
+    }
+
     @media (max-width: 1200px) {
       .agent-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
@@ -280,15 +337,15 @@ const dashboardHtml = `<!doctype html>
   ${navbarHtml}
   <div id="pageLoader" class="page-loader"><div class="loader-terminal scanlines"><div class="loader-title text-flicker">CLAWFUNDR</div><div class="loader-line">initializing<span class="cursor-blink">_</span></div></div></div>
 
-  <main class="shell">
-    <section class="panel">
+  <main class="shell dashboard-shell">
+    <section class="panel panel-hero">
       <h1 class="headline text-flicker">Clawfundr API Dashboard</h1>
       <p class="subtitle">Register your agent, get API key instantly, and continue claim verification through your unique claim link.</p>
       <div class="divider"></div>
       <div id="status" class="status">[ready] listening for commands</div>
     </section>
 
-    <section class="panel">
+    <section class="panel panel-form">
       <div class="grid">
         <div class="field">
           <label for="agentName">Agent Name</label>
@@ -308,7 +365,7 @@ const dashboardHtml = `<!doctype html>
       <div class="codebox" id="apiBox">api_key: claw_****...****</div>
     </section>
 
-    <section class="panel">
+    <section class="panel panel-stats">
       <div class="stat-grid">
         <div class="stat"><div class="k">Total Agents</div><div class="v" id="statTotal">0</div></div>
         <div class="stat"><div class="k">Verified</div><div class="v" id="statVerified">0</div></div>
@@ -320,7 +377,7 @@ const dashboardHtml = `<!doctype html>
       <div class="list" id="agentsList"></div>
     </section>
 
-    <section class="panel">
+    <section class="panel panel-log">
       <div class="terminal">
         <pre id="output">[ready] waiting for registration workflow...</pre>
       </div>
@@ -882,8 +939,8 @@ const userProfileHtml = `<!doctype html>
       joinedEl.textContent = p.joinedAt || '-';
       recentTradeEl.textContent = String(metrics.trades_count || trades.length || 0);
       copyTradeEl.textContent = '0';
-      followersEl.textContent = '0';
-      followingEl.textContent = '0';
+      followersEl.textContent = String(p.twitterFollowers ?? 0);
+      followingEl.textContent = String(p.twitterFollowing ?? 0);
 
       const handle = p.twitterHandle ? '@'+p.twitterHandle : '@unlinked';
       ownerNameEl.textContent = p.twitterHandle ? p.twitterHandle : 'Unlinked Owner';
