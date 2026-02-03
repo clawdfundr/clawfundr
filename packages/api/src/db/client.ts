@@ -386,6 +386,36 @@ export async function listAgents(limit: number = 100): Promise<AgentProfile[]> {
     return result.rows;
 }
 
+export async function listVerifiedAgents(limit: number = 100): Promise<AgentProfile[]> {
+    await ensureAgentProfilesTable();
+
+    const result = await query<AgentProfile>(
+        `SELECT *
+         FROM agent_profiles
+         WHERE verification_status = 'verified'
+         ORDER BY verified_at DESC NULLS LAST, created_at DESC
+         LIMIT $1`,
+        [limit]
+    );
+
+    return result.rows;
+}
+
+export async function getVerifiedAgentByName(agentName: string): Promise<AgentProfile | null> {
+    await ensureAgentProfilesTable();
+
+    const result = await query<AgentProfile>(
+        `SELECT *
+         FROM agent_profiles
+         WHERE verification_status = 'verified'
+           AND LOWER(agent_name) = LOWER($1)
+         LIMIT 1`,
+        [agentName]
+    );
+
+    return result.rows[0] || null;
+}
+
 export async function getAgentDashboardMetrics(userId: string): Promise<AgentDashboardMetrics> {
     const result = await query<AgentDashboardMetrics>(
         `SELECT

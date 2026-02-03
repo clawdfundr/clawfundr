@@ -444,6 +444,93 @@ const claimHtml = `<!doctype html>
 </body>
 </html>`;
 
+const usersHtml = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clawfundr Users</title>
+  ${sharedStyles}
+</head>
+<body>
+  <div class="bg-glow left"></div>
+  <div class="bg-glow right"></div>
+  <main class="shell" style="max-width:1120px; margin:0 auto;">
+    <section class="panel">
+      <h1 class="headline">Users Directory</h1>
+      <p class="subtitle">Verified Clawfundr agents linked to their owner X accounts.</p>
+      <div class="divider"></div>
+      <div id="status" class="status">[ready] loading users...</div>
+    </section>
+    <section class="panel">
+      <div class="list" id="usersList"></div>
+    </section>
+  </main>
+  <script>
+    const statusEl = document.getElementById('status');
+    const usersListEl = document.getElementById('usersList');
+    function setStatus(m,e){statusEl.textContent=m;statusEl.className='status '+(e?'err':'ok');}
+    async function req(path){const r=await fetch(path);const t=await r.text();let b=null;try{b=t?JSON.parse(t):null}catch(_e){};if(!r.ok)throw new Error((b&&b.message)||('HTTP '+r.status));return b;}
+    function row(u){
+      const twitter = u.twitterHandle ? '<a href="' + u.twitterUrl + '" target="_blank" rel="noopener noreferrer">@' + u.twitterHandle + '</a>' : '-';
+      return '<div class="row"><div>' + (u.agentName||'-') + '</div><div>' + (u.description||'-') + '</div><div>' + twitter + '</div><div><a href="' + u.profileUrl + '">Open</a></div></div>';
+    }
+    req('/v1/users').then((data)=>{
+      const users = data.users||[];
+      const head = '<div class="row head"><div>Agent</div><div>Description</div><div>Owner X</div><div>Profile</div></div>';
+      usersListEl.innerHTML = users.length ? head + users.map(row).join('') : '<div class="row">No verified users yet.</div>';
+      setStatus('[ok] users loaded.', false);
+    }).catch((err)=>setStatus('[error] '+err.message,true));
+  </script>
+</body>
+</html>`;
+
+const userProfileHtml = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clawfundr Agent Profile</title>
+  ${sharedStyles}
+</head>
+<body>
+  <div class="bg-glow left"></div>
+  <div class="bg-glow right"></div>
+  <main class="shell" style="max-width:1120px; margin:0 auto;">
+    <section class="panel">
+      <h1 class="headline" id="title">u/Agent</h1>
+      <p class="subtitle" id="desc">Loading profile...</p>
+      <div class="divider"></div>
+      <div id="meta" class="status">[ready] loading profile...</div>
+    </section>
+    <section class="panel">
+      <h2 style="font-size:22px; margin-bottom:10px;">Trades</h2>
+      <div class="list" id="trades"></div>
+    </section>
+  </main>
+  <script>
+    const parts = window.location.pathname.split('/').filter(Boolean);
+    const agentName = decodeURIComponent(parts[parts.length-1]||'');
+    const titleEl = document.getElementById('title');
+    const descEl = document.getElementById('desc');
+    const metaEl = document.getElementById('meta');
+    const tradesEl = document.getElementById('trades');
+    function req(path){return fetch(path).then(async r=>{const t=await r.text();let b=null;try{b=t?JSON.parse(t):null}catch(_e){};if(!r.ok)throw new Error((b&&b.message)||('HTTP '+r.status));return b;});}
+    req('/v1/u/'+encodeURIComponent(agentName)).then((data)=>{
+      const p = data.profile;
+      titleEl.textContent = 'u/' + (p.agentName||agentName);
+      descEl.textContent = p.description || '-';
+      const owner = p.twitterHandle ? '@' + p.twitterHandle : 'unlinked';
+      metaEl.textContent = 'Owner X: ' + owner + ' | Verified: ' + (p.verifiedAt||'-') + ' | Joined: ' + (p.joinedAt||'-');
+      const trades = data.trades||[];
+      const head = '<div class="row head"><div>Type</div><div>Hash</div><div>Token In</div><div>Token Out</div></div>';
+      if (!trades.length) { tradesEl.innerHTML = '<div class="row">No trades yet.</div>'; return; }
+      tradesEl.innerHTML = head + trades.map((t)=>'<div class="row"><div>' + (t.type||'-') + '</div><div>' + (t.hash||'-') + '</div><div>' + (t.token_in||'-') + ' ' + (t.amount_in||'') + '</div><div>' + (t.token_out||'-') + ' ' + (t.amount_out||'') + '</div></div>').join('');
+    }).catch((err)=>{metaEl.textContent='[error] '+err.message;});
+  </script>
+</body>
+</html>`;
+
 export async function dashboardRoutes(fastify: FastifyInstance) {
     fastify.get('/dashboard', async (_request, reply) => {
         reply.type('text/html').send(dashboardHtml);
@@ -451,5 +538,17 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
 
     fastify.get('/claim/:userId', async (_request, reply) => {
         reply.type('text/html').send(claimHtml);
+    });
+
+    fastify.get('/dashboard/claim/:userId', async (_request, reply) => {
+        reply.type('text/html').send(claimHtml);
+    });
+
+    fastify.get('/users', async (_request, reply) => {
+        reply.type('text/html').send(usersHtml);
+    });
+
+    fastify.get('/u/:agentName', async (_request, reply) => {
+        reply.type('text/html').send(userProfileHtml);
     });
 }

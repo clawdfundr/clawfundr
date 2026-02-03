@@ -7,7 +7,9 @@ import {
     getAgentSkillUsage,
     getAgentStats,
     getAgentTrades,
+    getVerifiedAgentByName,
     listAgents,
+    listVerifiedAgents,
     markAgentVerified,
     saveAgentTweetUrl,
 } from '../db/client';
@@ -21,10 +23,18 @@ function getAgentName(profile: { agent_name: string | null; display_name: string
     return profile.agent_name || profile.display_name || 'Unnamed Agent';
 }
 
-function createTweetText(agentName: string, code: string): string {
-    return `I'm claiming my AI agent "${agentName}" on @clawfundr 🦀
+function toProfilePath(agentName: string): string {
+    return `/u/${encodeURIComponent(agentName)}`;
+}
 
-Verification: claw-${code}`;
+function getTwitterHandle(tweetUrl: string | null): string | null {
+    if (!tweetUrl) return null;
+    const match = tweetUrl.match(/(?:x|twitter)\.com\/([A-Za-z0-9_]{1,15})\/status\//i);
+    return match ? match[1] : null;
+}
+
+function createTweetText(agentName: string, code: string): string {
+    return `I'm claiming my AI agent "${agentName}" on @clawfundr \u{1F980}\n\nVerification: claw-${code}`;
 }
 
 function createTweetIntentUrl(text: string): string {
@@ -113,6 +123,88 @@ export async function agentRoutes(fastify: FastifyInstance) {
         },
     });
 
+    // Public users directory (verified agents)
+    fastify.get('/v1/users', {
+        handler: async (_request, reply) => {
+            try {
+                const users = await listVerifiedAgents(300);
+                return reply.send({
+                    users: users.map((agent) => {
+                        const agentName = getAgentName(agent);
+                        const twitterHandle = getTwitterHandle(agent.tweet_url);
+                        return {
+                            userId: agent.user_id,
+                            agentName,
+                            description: agent.description,
+                            twitterHandle,
+                            twitterUrl: twitterHandle ? `https://x.com/${twitterHandle}` : null,
+                            profileUrl: toProfilePath(agentName),
+                            verifiedAt: agent.verified_at ? agent.verified_at.toISOString() : null,
+                        };
+                    }),
+                });
+            } catch (error) {
+                console.error('Error loading users directory:', error);
+                return (reply as any).status(500).send({
+                    error: 'Internal Server Error',
+                    message: 'Failed to load users directory',
+                });
+            }
+        },
+    });
+
+    // Public profile by agent name
+    fastify.get('/v1/u/:agentName', {
+        handler: async (request, reply) => {
+            const { agentName } = request.params as { agentName: string };
+
+            try {
+                const profile = await getVerifiedAgentByName(agentName);
+                if (!profile) {
+                    return (reply as any).status(404).send({
+                        error: 'Not Found',
+                        message: 'Verified agent profile not found',
+                    });
+                }
+
+                const metrics = await getAgentDashboardMetrics(profile.user_id);
+                const trades = await getAgentTrades(profile.user_id, 30);
+                const activity = await getAgentActivity(profile.user_id, 20);
+                const skillUsage = await getAgentSkillUsage(profile.user_id, 10);
+
+                const normalizedName = getAgentName(profile);
+                const twitterHandle = getTwitterHandle(profile.tweet_url);
+
+                return reply.send({
+                    profile: {
+                        userId: profile.user_id,
+                        agentName: normalizedName,
+                        description: profile.description,
+                        verificationStatus: profile.verification_status,
+                        verifiedAt: profile.verified_at ? profile.verified_at.toISOString() : null,
+                        joinedAt: profile.created_at.toISOString(),
+                        twitterHandle,
+                        twitterUrl: twitterHandle ? `https://x.com/${twitterHandle}` : null,
+                        tweetUrl: profile.tweet_url,
+                    },
+                    metrics,
+                    skillUsage,
+                    activity: activity.map((a) => ({
+                        route: a.route,
+                        ts: a.ts.toISOString(),
+                    })),
+                    trades,
+                });
+            } catch (error) {
+                console.error('Error loading public profile:', error);
+                return (reply as any).status(500).send({
+                    error: 'Internal Server Error',
+                    message: 'Failed to load public profile',
+                });
+            }
+        },
+    });
+
     fastify.get('/v1/agents/me', {
         preHandler: fastify.auth([fastify.authenticate]),
         handler: async (request, reply) => {
@@ -136,6 +228,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
                               verificationCode: profile.verification_code,
                               verificationStatus: profile.verification_status,
                               tweetUrl: profile.tweet_url,
+                              twitterHandle: getTwitterHandle(profile.tweet_url),
                               createdAt: profile.created_at.toISOString(),
                               verifiedAt: profile.verified_at ? profile.verified_at.toISOString() : null,
                           }
