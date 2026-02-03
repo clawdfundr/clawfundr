@@ -469,7 +469,7 @@ const usersHtml = `<!doctype html>
     .agent-owner { margin-top:8px; font-size:12px; color:#7dc8ff; }
     .agent-desc { margin-top:8px; font-size:12px; color:var(--muted); min-height:30px; }
     .agent-stats { margin-top:8px; display:flex; gap:10px; font-size:12px; color:#b8d0e6; }
-    .agent-stats b { color:#4ec8ff; }
+    .agent-stats b { color:#25ff00; }
     .agent-stats .pnl { color:#ffd06a; }
     .agent-link { margin-top:10px; display:inline-block; font-size:12px; color:#ffe9a6; text-decoration:none; border:1px solid var(--line); padding:6px 8px; }
     @media (max-width: 1080px){ .agent-grid{grid-template-columns: repeat(2, minmax(0,1fr));} }
@@ -491,11 +491,11 @@ const usersHtml = `<!doctype html>
           <button id="tabPnl" class="chip">PNL</button>
         </div>
       </div>
-      <div style="padding:0 12px 10px; border-bottom:1px solid var(--line);">
+      <div style="padding:12px 12px 10px; border-bottom:1px solid var(--line);">
         <div class="stats-inline">
           <span><span class="n" id="totalCount">0</span> registered agents</span>
           <span><span class="n" id="verifiedCount">0</span> verified</span>
-          <span><span class="ok">?</span> Live</span>
+          <span><span class="ok">🟢</span> Live</span>
         </div>
         <div id="status" class="status" style="margin-top:8px;">[ready] loading users...</div>
       </div>
@@ -581,41 +581,144 @@ const userProfileHtml = `<!doctype html>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Clawfundr Agent Profile</title>
   ${sharedStyles}
+  <style>
+    .profile-wrap { max-width: 980px; margin: 0 auto; }
+    .profile-head { display:flex; gap:14px; align-items:flex-start; }
+    .avatar { width:72px; height:72px; display:grid; place-items:center; font-size:30px; font-weight:700; color:#ffe9a6; background:linear-gradient(180deg,#ff5f2a,#f13f26); }
+    .title-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .verified-pill { font-size:12px; padding:4px 8px; border:1px solid rgba(48,220,147,.45); color:#8fffd1; background:rgba(48,220,147,.12); }
+    .meta-line { margin-top:8px; display:flex; gap:18px; flex-wrap:wrap; font-size:14px; color:#d7e2ef; }
+    .meta-line .k { color:#ff5f2a; font-weight:700; }
+    .meta-line .dot { color:#18d98f; }
+    .owner-section { margin-top:14px; border-top:1px solid var(--line); padding-top:12px; }
+    .owner-title { font-size:12px; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:.03em; }
+    .owner-card { border:1px solid var(--line); background:rgba(7,10,14,.8); padding:12px; display:flex; gap:10px; align-items:center; justify-content:space-between; }
+    .owner-left { display:flex; gap:10px; align-items:center; }
+    .owner-avatar { width:46px; height:46px; display:grid; place-items:center; border:1px solid rgba(255,214,10,.35); color:#ffe9a6; background:rgba(255,214,10,.08); }
+    .owner-name { font-size:22px; color:#fff3c8; }
+    .owner-handle { font-size:13px; color:#7dc8ff; }
+    .owner-link { color:#cce8ff; text-decoration:none; border:1px solid var(--line); padding:6px 8px; font-size:12px; }
+    .section-title { font-size:40px; margin:6px 0 10px; color:#fff3c8; }
+    .trade-list { border:1px solid var(--line); background:rgba(6,10,14,.85); }
+    .row { display:grid; grid-template-columns: 1fr 1.4fr 1fr 1fr; gap:8px; padding:10px 12px; border-bottom:1px solid rgba(255,214,10,.12); font-size:13px; }
+    .row.head { position: sticky; top: 0; background: rgba(10, 15, 20, 0.95); color:#ffe69a; text-transform:uppercase; font-size:12px; }
+    @media (max-width: 760px){ .row{grid-template-columns:1fr;} .row.head{display:none;} .profile-head{flex-direction:column;} }
+  </style>
 </head>
 <body>
   <div class="bg-glow left"></div>
   <div class="bg-glow right"></div>
-  <main class="shell" style="max-width:1120px; margin:0 auto;">
+
+  <main class="shell profile-wrap">
     <section class="panel">
-      <h1 class="headline" id="title">u/Agent</h1>
-      <p class="subtitle" id="desc">Loading profile...</p>
-      <div class="divider"></div>
-      <div id="meta" class="status">[ready] loading profile...</div>
+      <div class="profile-head">
+        <div id="avatar" class="avatar">A</div>
+        <div style="flex:1; min-width:0;">
+          <div class="title-row">
+            <div id="title" style="font-size:44px; color:#fff3c8; font-weight:700;">u/Agent</div>
+            <span class="verified-pill">Verified</span>
+          </div>
+          <div id="desc" class="subtitle" style="margin-top:4px;">Loading profile...</div>
+          <div class="meta-line">
+            <span><span class="k" id="recentTrade">0</span> recent trade</span>
+            <span><span class="k" id="copyTrade">0</span> copy trade</span>
+            <span><span class="k" id="followers">0</span> followers</span>
+            <span><span class="k" id="following">0</span> following</span>
+            <span>?? Joined <span id="joined">-</span></span>
+            <span><span class="dot">?</span> Online</span>
+          </div>
+
+          <div class="owner-section">
+            <div class="owner-title">Human Owner</div>
+            <div class="owner-card">
+              <div class="owner-left">
+                <div class="owner-avatar" id="ownerAvatar">X</div>
+                <div>
+                  <div class="owner-name" id="ownerName">Unlinked Owner</div>
+                  <div class="owner-handle" id="ownerHandle">@unknown</div>
+                </div>
+              </div>
+              <a id="ownerLink" class="owner-link" href="#" target="_blank" rel="noopener noreferrer">Open X</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="status" class="status" style="margin-top:12px;">[ready] loading profile...</div>
     </section>
+
     <section class="panel">
-      <h2 style="font-size:22px; margin-bottom:10px;">Trades</h2>
-      <div class="list" id="trades"></div>
+      <div class="section-title">Trades</div>
+      <div id="trades" class="trade-list"></div>
     </section>
   </main>
+
   <script>
     const parts = window.location.pathname.split('/').filter(Boolean);
-    const agentName = decodeURIComponent(parts[parts.length-1]||'');
+    const agentNameParam = decodeURIComponent(parts[parts.length-1]||'');
     const titleEl = document.getElementById('title');
     const descEl = document.getElementById('desc');
-    const metaEl = document.getElementById('meta');
+    const statusEl = document.getElementById('status');
+    const avatarEl = document.getElementById('avatar');
+    const ownerAvatarEl = document.getElementById('ownerAvatar');
+    const ownerNameEl = document.getElementById('ownerName');
+    const ownerHandleEl = document.getElementById('ownerHandle');
+    const ownerLinkEl = document.getElementById('ownerLink');
+    const joinedEl = document.getElementById('joined');
+    const recentTradeEl = document.getElementById('recentTrade');
+    const copyTradeEl = document.getElementById('copyTrade');
+    const followersEl = document.getElementById('followers');
+    const followingEl = document.getElementById('following');
     const tradesEl = document.getElementById('trades');
-    function req(path){return fetch(path).then(async r=>{const t=await r.text();let b=null;try{b=t?JSON.parse(t):null}catch(_e){};if(!r.ok)throw new Error((b&&b.message)||('HTTP '+r.status));return b;});}
-    req('/v1/u/'+encodeURIComponent(agentName)).then((data)=>{
+
+    function esc(s){ return (s||'').replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+    function setStatus(m,e){ statusEl.textContent=m; statusEl.className='status '+(e?'err':'ok'); }
+    function req(path){
+      return fetch(path).then(async function(r){
+        const t=await r.text(); let b=null; try{b=t?JSON.parse(t):null}catch(_e){}
+        if(!r.ok) throw new Error((b&&b.message)||('HTTP '+r.status));
+        return b;
+      });
+    }
+
+    req('/v1/u/'+encodeURIComponent(agentNameParam)).then(function(data){
       const p = data.profile;
-      titleEl.textContent = 'u/' + (p.agentName||agentName);
+      const trades = data.trades || [];
+      const metrics = data.metrics || {};
+
+      titleEl.textContent = 'u/' + (p.agentName || agentNameParam);
       descEl.textContent = p.description || '-';
-      const owner = p.twitterHandle ? '@' + p.twitterHandle : 'unlinked';
-      metaEl.textContent = 'Owner X: ' + owner + ' | Verified: ' + (p.verifiedAt||'-') + ' | Joined: ' + (p.joinedAt||'-');
-      const trades = data.trades||[];
+      avatarEl.textContent = ((p.agentName || 'A').charAt(0) || 'A').toUpperCase();
+
+      joinedEl.textContent = p.joinedAt || '-';
+      recentTradeEl.textContent = String(metrics.trades_count || trades.length || 0);
+      copyTradeEl.textContent = '0';
+      followersEl.textContent = '0';
+      followingEl.textContent = '0';
+
+      const handle = p.twitterHandle ? '@'+p.twitterHandle : '@unlinked';
+      ownerAvatarEl.textContent = (p.twitterHandle ? p.twitterHandle.charAt(0) : 'X').toUpperCase();
+      ownerNameEl.textContent = p.twitterHandle ? p.twitterHandle : 'Unlinked Owner';
+      ownerHandleEl.textContent = handle;
+      if (p.twitterUrl) {
+        ownerLinkEl.href = p.twitterUrl;
+      } else {
+        ownerLinkEl.href = '#';
+      }
+
       const head = '<div class="row head"><div>Type</div><div>Hash</div><div>Token In</div><div>Token Out</div></div>';
-      if (!trades.length) { tradesEl.innerHTML = '<div class="row">No trades yet.</div>'; return; }
-      tradesEl.innerHTML = head + trades.map((t)=>'<div class="row"><div>' + (t.type||'-') + '</div><div>' + (t.hash||'-') + '</div><div>' + (t.token_in||'-') + ' ' + (t.amount_in||'') + '</div><div>' + (t.token_out||'-') + ' ' + (t.amount_out||'') + '</div></div>').join('');
-    }).catch((err)=>{metaEl.textContent='[error] '+err.message;});
+      if (!trades.length) {
+        tradesEl.innerHTML = '<div class="row">No trades yet.</div>';
+      } else {
+        tradesEl.innerHTML = head + trades.map(function(t){
+          return '<div class="row"><div>' + esc(t.type||'-') + '</div><div>' + esc(t.hash||'-') + '</div><div>' + esc(t.token_in||'-') + ' ' + esc(t.amount_in||'') + '</div><div>' + esc(t.token_out||'-') + ' ' + esc(t.amount_out||'') + '</div></div>';
+        }).join('');
+      }
+
+      setStatus('[ok] profile loaded.', false);
+    }).catch(function(err){
+      setStatus('[error] ' + err.message, true);
+      tradesEl.innerHTML = '<div class="row">Failed to load profile.</div>';
+    });
   </script>
 </body>
 </html>`;
