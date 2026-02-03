@@ -46,6 +46,20 @@ const sharedStyles = `
     .bg-glow.left { top: -18vw; left: -16vw; }
     .bg-glow.right { right: -16vw; bottom: -20vw; }
 
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 214, 10, 0.45) rgba(7, 10, 15, 0.55);
+    }
+    *::-webkit-scrollbar { width: 10px; height: 10px; }
+    *::-webkit-scrollbar-track { background: rgba(7, 10, 15, 0.6); }
+    *::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, rgba(255, 214, 10, 0.62), rgba(255, 183, 0, 0.45));
+      border: 1px solid rgba(255, 214, 10, 0.34);
+    }
+    *::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, rgba(255, 214, 10, 0.8), rgba(255, 183, 0, 0.62));
+    }
+
     .topbar { position: sticky; top: 0; z-index: 4; backdrop-filter: blur(10px); background: rgba(6, 9, 13, 0.84); border-bottom: 1px solid var(--line); }
     .topbar-inner { width: min(1280px, 100% - 32px); margin: 0 auto; height: 58px; display: flex; align-items: center; justify-content: space-between; }
     .brand { color: var(--yellow); text-decoration: none; font-size: 22px; font-weight: 700; letter-spacing: 0.04em; }
@@ -839,6 +853,9 @@ const userProfileHtml = `<!doctype html>
     .owner-avatar .fallback { font-size:18px; }
     .owner-name { font-size:22px; color:#fff3c8; }
     .owner-handle { font-size:13px; color:#7dc8ff; }
+    .owner-metrics { margin-top:6px; display:flex; gap:12px; flex-wrap:wrap; }
+    .owner-metrics a { color:#d7e2ef; text-decoration:none; border-bottom:1px dotted rgba(255,214,10,.28); }
+    .owner-metrics a:hover { color:#fff3c8; border-bottom-color:rgba(255,214,10,.68); }
     .owner-link { color:#cce8ff; text-decoration:none; border:1px solid var(--line); padding:6px 8px; font-size:12px; }
     .section-title { font-size:32px; margin:2px 0 8px; color:#fff3c8; }
     .trade-list { border:1px solid var(--line); background:rgba(6,10,14,.85); }
@@ -878,7 +895,7 @@ const userProfileHtml = `<!doctype html>
                 <div class="owner-avatar" id="ownerAvatar"><img id="ownerAvatarImg" alt="Owner avatar" /><span id="ownerAvatarFallback" class="fallback">X</span></div>
                 <div>
                   <div class="owner-name" id="ownerName">Unlinked Owner</div>
-                  <div class="owner-handle"><span style="display:inline-flex; vertical-align:middle; margin-right:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.9 2h3.68l-8.04 9.2L24 22h-7.41l-5.8-7.58L4.2 22H.5l8.6-9.83L0 2h7.6l5.24 6.9L18.9 2zm-1.29 17.8h2.04L6.5 4.1H4.32z"></path></svg></span><span id="ownerHandle">@unknown</span></div>
+                  <div class="owner-handle"><span style="display:inline-flex; vertical-align:middle; margin-right:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.9 2h3.68l-8.04 9.2L24 22h-7.41l-5.8-7.58L4.2 22H.5l8.6-9.83L0 2h7.6l5.24 6.9L18.9 2zm-1.29 17.8h2.04L6.5 4.1H4.32z"></path></svg></span><span id="ownerHandle">@unknown</span></div><div class="owner-metrics"><a id="ownerFollowersLink" href="#" target="_blank" rel="noopener noreferrer"><span id="ownerFollowers">0</span> followers</a><a id="ownerFollowingLink" href="#" target="_blank" rel="noopener noreferrer"><span id="ownerFollowing">0</span> following</a></div>
                 </div>
               </div>
               <a id="ownerLink" class="owner-link" href="#" target="_blank" rel="noopener noreferrer">Open X</a>
@@ -916,6 +933,10 @@ const userProfileHtml = `<!doctype html>
     const followingEl = document.getElementById('following');
     const followersLinkEl = document.getElementById('followersLink');
     const followingLinkEl = document.getElementById('followingLink');
+    const ownerFollowersEl = document.getElementById('ownerFollowers');
+    const ownerFollowingEl = document.getElementById('ownerFollowing');
+    const ownerFollowersLinkEl = document.getElementById('ownerFollowersLink');
+    const ownerFollowingLinkEl = document.getElementById('ownerFollowingLink');
     const tradesEl = document.getElementById('trades');
 
     function esc(s){ return (s||'').replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -939,8 +960,12 @@ const userProfileHtml = `<!doctype html>
       joinedEl.textContent = p.joinedAt || '-';
       recentTradeEl.textContent = String(metrics.trades_count || trades.length || 0);
       copyTradeEl.textContent = '0';
-      followersEl.textContent = String(p.twitterFollowers ?? 0);
-      followingEl.textContent = String(p.twitterFollowing ?? 0);
+      const followers = Number(p.twitterFollowers ?? 0);
+      const following = Number(p.twitterFollowing ?? 0);
+      followersEl.textContent = String(followers);
+      followingEl.textContent = String(following);
+      ownerFollowersEl.textContent = String(followers);
+      ownerFollowingEl.textContent = String(following);
 
       const handle = p.twitterHandle ? '@'+p.twitterHandle : '@unlinked';
       ownerNameEl.textContent = p.twitterHandle ? p.twitterHandle : 'Unlinked Owner';
@@ -960,10 +985,14 @@ const userProfileHtml = `<!doctype html>
         ownerLinkEl.href = p.twitterUrl;
         followersLinkEl.href = p.twitterUrl + '/followers';
         followingLinkEl.href = p.twitterUrl + '/following';
+        ownerFollowersLinkEl.href = p.twitterUrl + '/followers';
+        ownerFollowingLinkEl.href = p.twitterUrl + '/following';
       } else {
         ownerLinkEl.href = '#';
         followersLinkEl.href = '#';
         followingLinkEl.href = '#';
+        ownerFollowersLinkEl.href = '#';
+        ownerFollowingLinkEl.href = '#';
       }
 
       const head = '<div class="row head"><div>Type</div><div>Hash</div><div>Token In</div><div>Token Out</div></div>';
