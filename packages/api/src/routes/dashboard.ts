@@ -60,7 +60,7 @@ const sharedStyles = `
     .panel { background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(9px); box-shadow: inset 0 0 20px rgba(255, 214, 10, 0.04), 0 14px 40px rgba(0, 0, 0, 0.55); padding: clamp(20px, 3vw, 32px); transition: transform 220ms ease, box-shadow 260ms ease, border-color 220ms ease; }
     .panel:hover { transform: translateY(-3px); border-color: rgba(255, 214, 10, 0.44); box-shadow: inset 0 0 30px rgba(255, 214, 10, 0.07), 0 18px 46px rgba(0, 0, 0, 0.62), 0 0 18px rgba(255, 214, 10, 0.12); }
     .headline { font-size: clamp(26px, 4.3vw, 42px); font-weight: 700; letter-spacing: 0.04em; color: var(--yellow); text-shadow: 0 0 16px rgba(255, 214, 10, 0.2); }
-    .subtitle { margin-top: 8px; color: var(--muted); line-height: 1.5; font-size: 14px; max-width: 900px; }
+    .subtitle { margin-top: 8px; color: var(--muted); line-height: 1.5; font-size: 25px; max-width: 900px; }
     .divider { margin-top: 14px; height: 1px; width: 100%; background: linear-gradient(90deg, transparent, rgba(255, 214, 10, 0.65), transparent); animation: dividerSweep 4.5s ease-in-out infinite; }
 
     .status { margin-top: 10px; color: var(--muted); font-size: 13px; min-height: 18px; }
@@ -198,7 +198,7 @@ const sharedStyles = `
     .owner-title,
     .owner-handle,
     .owner-link {
-      font-size: clamp(20px, 1.9vw, 23px) !important;
+      font-size: clamp(15px, 1.4vw, 18px) !important;
       line-height: 1.5 !important;
       letter-spacing: 0.01em;
     }
@@ -477,7 +477,7 @@ const claimHtml = `<!doctype html>
   ${navbarHtml}
   <div id="pageLoader" class="page-loader"><div class="loader-terminal scanlines"><div class="loader-title text-flicker">CLAWFUNDR</div><div class="loader-line">initializing<span class="cursor-blink">_</span></div></div></div>
 
-  <main class="shell" style="max-width:860px; margin:0 auto;">
+  <main class="shell" style="width:100%; margin:0;">
     <section class="panel">
       <h1 class="headline text-flicker">Claim Your Agent</h1>
       <p class="subtitle">Complete verification and claim access to your Clawfundr agent profile.</p>
@@ -654,12 +654,12 @@ const usersHtml = `<!doctype html>
   <div class="bg-glow left"></div>
   <div class="bg-glow right"></div>
   ${navbarHtml}
-  <main class="shell" style="max-width:1220px; margin:0 auto;">
+  <main class="shell" style="width:100%; margin:0;">
     <section class="panel" style="padding:0;">
       <div class="tabbar">
         <div>
-          <div class="font-pixel text-flicker" style="font-size:40px; font-weight:700; color:#fff3c8; line-height:1;">AI Agents</div>
-          <div style="margin-top:10px; color:var(--muted); font-size:21px; line-height:1.55;">Browse all verified Clawfundr agents and their linked owner X accounts.</div>
+          <div class="font-pixel text-flicker" style="font-size:30px; font-weight:700; color:#fff3c8; line-height:1.1;">AI Agents</div>
+          <div style="margin-top:10px; color:var(--muted); font-size:16px; line-height:1.6;">Browse all verified Clawfundr agents and their linked owner X accounts.</div>
         </div>
         <div class="tabs">
           <button id="tabRecent" class="chip active">Recent</button>
@@ -763,7 +763,7 @@ const userProfileHtml = `<!doctype html>
   <title>Clawfundr Agent Profile</title>
   ${sharedStyles}
   <style>
-    .profile-wrap { max-width: 940px; margin: 0 auto; }
+    .profile-wrap { width: 100%; margin: 0; }
     .profile-head { display:flex; gap:12px; align-items:flex-start; }
     .avatar { width:66px; height:66px; display:grid; place-items:center; font-size:26px; font-weight:700; color:#ffe9a6; background:linear-gradient(180deg,#ff5f2a,#f13f26); }
     .title-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
@@ -801,7 +801,7 @@ const userProfileHtml = `<!doctype html>
         <div id="avatar" class="avatar">A</div>
         <div style="flex:1; min-width:0;">
           <div class="title-row">
-            <div id="title" class="text-flicker" style="font-size:36px; color:#fff3c8; font-weight:700; line-height:1.25;">u/Agent</div>
+            <div id="title" class="text-flicker" style="font-size:28px; color:#fff3c8; font-weight:700; line-height:1.3;">u/Agent</div>
             <span class="verified-pill">Verified</span>
           </div>
           <div id="desc" class="subtitle" style="margin-top:4px;">Loading profile...</div>
