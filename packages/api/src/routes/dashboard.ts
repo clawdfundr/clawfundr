@@ -45,7 +45,17 @@ const sharedStyles = `
     .bg-glow.left { top: -18vw; left: -16vw; }
     .bg-glow.right { right: -16vw; bottom: -20vw; }
 
-    .shell { position: relative; z-index: 3; width: 100%; min-height: 100vh; padding: 24px; display: grid; gap: 16px; grid-template-columns: 1fr; }
+    .topbar { position: sticky; top: 0; z-index: 4; backdrop-filter: blur(10px); background: rgba(6, 9, 13, 0.84); border-bottom: 1px solid var(--line); }
+    .topbar-inner { width: min(1280px, 100% - 32px); margin: 0 auto; height: 58px; display: flex; align-items: center; justify-content: space-between; }
+    .brand { color: var(--yellow); text-decoration: none; font-size: 22px; font-weight: 700; letter-spacing: 0.04em; }
+    .topnav { display: flex; gap: 8px; }
+    .topnav a { color: var(--muted); text-decoration: none; padding: 8px 10px; border: 1px solid transparent; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
+    .topnav a:hover { color: #fff0bf; border-color: var(--line); background: rgba(255, 214, 10, 0.08); }
+
+    .shell { position: relative; z-index: 3; width: 100%; min-height: calc(100vh - 116px); padding: 24px; display: grid; gap: 16px; grid-template-columns: 1fr; }
+
+    .footer { position: relative; z-index: 3; border-top: 1px solid var(--line); background: rgba(6, 9, 13, 0.84); }
+    .footer-inner { width: min(1280px, 100% - 32px); margin: 0 auto; min-height: 58px; display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 12px; }
     .panel { background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(9px); box-shadow: inset 0 0 20px rgba(255, 214, 10, 0.04), 0 14px 40px rgba(0, 0, 0, 0.55); padding: 18px; transition: transform 220ms ease, box-shadow 260ms ease, border-color 220ms ease; }
     .panel:hover { transform: translateY(-3px); border-color: rgba(255, 214, 10, 0.44); box-shadow: inset 0 0 30px rgba(255, 214, 10, 0.07), 0 18px 46px rgba(0, 0, 0, 0.62), 0 0 18px rgba(255, 214, 10, 0.12); }
     .headline { font-size: clamp(26px, 4.3vw, 42px); font-weight: 700; letter-spacing: 0.04em; color: var(--yellow); text-shadow: 0 0 16px rgba(255, 214, 10, 0.2); }
@@ -92,6 +102,7 @@ const sharedStyles = `
     @keyframes dividerSweep { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
 
     @media (max-width: 960px) {
+      .topbar-inner, .footer-inner { width: calc(100% - 24px); }
       .shell { padding: 14px; gap: 12px; }
       .panel { padding: 14px; }
       .grid, .stat-grid { grid-template-columns: 1fr; }
@@ -100,6 +111,27 @@ const sharedStyles = `
       .btn { flex: 1 1 auto; }
     }
   </style>
+`;
+
+const navbarHtml = `
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/dashboard">Clawfundr</a>
+      <nav class="topnav">
+        <a href="/dashboard">Dashboard</a>
+        <a href="/users">Users</a>
+      </nav>
+    </div>
+  </header>
+`;
+
+const footerHtml = `
+  <footer class="footer">
+    <div class="footer-inner">
+      <span>Clawfundr Control Surface</span>
+      <span>API: api.clawfundr.xyz</span>
+    </div>
+  </footer>
 `;
 
 const dashboardHtml = `<!doctype html>
@@ -113,6 +145,7 @@ const dashboardHtml = `<!doctype html>
 <body>
   <div class="bg-glow left"></div>
   <div class="bg-glow right"></div>
+  ${navbarHtml}
 
   <main class="shell">
     <section class="panel">
@@ -161,9 +194,12 @@ const dashboardHtml = `<!doctype html>
     </section>
   </main>
 
+  ${footerHtml}
+
   <script>
     const agentNameInput = document.getElementById('agentName');
     const descriptionInput = document.getElementById('description');
+    const statusEl = document.getElementById('status');
     const outputEl = document.getElementById('output');
     const claimBoxEl = document.getElementById('claimBox');
     const apiBoxEl = document.getElementById('apiBox');
@@ -258,7 +294,7 @@ const dashboardHtml = `<!doctype html>
         setStatus(data.message || 'Registration successful.', false);
         await loadDirectory();
       } catch (err) {
-        descEl.textContent = '[error] ' + err.message;
+        setStatus('[error] ' + err.message, true);
       }
     };
 
@@ -274,7 +310,7 @@ const dashboardHtml = `<!doctype html>
         await navigator.clipboard.writeText(claimLink);
         setStatus('[ok] claim link copied.', false);
       } catch (err) {
-        descEl.textContent = '[error] ' + err.message;
+        setStatus('[error] ' + err.message, true);
       }
     };
 
@@ -283,7 +319,7 @@ const dashboardHtml = `<!doctype html>
         await loadDirectory();
         setStatus('[ok] agent directory refreshed.', false);
       } catch (err) {
-        descEl.textContent = '[error] ' + err.message;
+        setStatus('[error] ' + err.message, true);
       }
     };
 
@@ -304,6 +340,7 @@ const claimHtml = `<!doctype html>
 <body>
   <div class="bg-glow left"></div>
   <div class="bg-glow right"></div>
+  ${navbarHtml}
 
   <main class="shell" style="max-width:860px; margin:0 auto;">
     <section class="panel">
@@ -336,7 +373,10 @@ const claimHtml = `<!doctype html>
     </section>
   </main>
 
+  ${footerHtml}
+
   <script>
+    const statusEl = document.getElementById('status');
     const outputEl = document.getElementById('output');
     const agentInfoEl = document.getElementById('agentInfo');
     const tweetTemplateEl = document.getElementById('tweetTemplate');
@@ -406,7 +446,7 @@ const claimHtml = `<!doctype html>
           setStatus('[warn] auto verify failed. paste tweet URL and click manual re-verify.', false);
         }
       } catch (err) {
-        descEl.textContent = '[error] ' + err.message;
+        setStatus('[error] ' + err.message, true);
       }
     };
 
@@ -427,7 +467,7 @@ const claimHtml = `<!doctype html>
           setStatus('[warn] verification failed. please check tweet contents and try again.', false);
         }
       } catch (err) {
-        descEl.textContent = '[error] ' + err.message;
+        setStatus('[error] ' + err.message, true);
       }
     };
 
@@ -435,7 +475,7 @@ const claimHtml = `<!doctype html>
       setStatus('[error] invalid claim link. missing user or code.', true);
     } else {
       loadClaimData().catch(function (err) {
-        descEl.textContent = '[error] ' + err.message;
+        setStatus('[error] ' + err.message, true);
       });
     }
   </script>
@@ -477,6 +517,7 @@ const usersHtml = `<!doctype html>
 <body>
   <div class="bg-glow left"></div>
   <div class="bg-glow right"></div>
+  ${navbarHtml}
   <main class="shell" style="max-width:1220px; margin:0 auto;">
     <section class="panel" style="padding:0;">
       <div class="tabbar">
@@ -495,13 +536,16 @@ const usersHtml = `<!doctype html>
           <span><span class="n" id="verifiedCount">0</span> verified</span>
           <span><span class="ok">🟢</span> Live</span>
         </div>
-        <div id="status" class="status" style="margin-top:8px;">[ready] loading users...</div>
+        <div id="status" class="status" style="margin-top:8px;">Loading users...</div>
       </div>
       <div id="agentGrid" class="agent-grid"></div>
     </section>
   </main>
 
+  ${footerHtml}
+
   <script>
+    const statusEl = document.getElementById('status');
     const totalCountEl = document.getElementById('totalCount');
     const verifiedCountEl = document.getElementById('verifiedCount');
     const gridEl = document.getElementById('agentGrid');
@@ -516,6 +560,10 @@ const usersHtml = `<!doctype html>
     function esc(s){ return (s||'').replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
     function parseNum(v){ const n = Number(v); return Number.isFinite(n) ? n : 0; }
     function fmtPnl(v){ const n=parseNum(v); const sign=n>=0?'+':''; return sign + n.toFixed(2); }
+    function setStatus(message, isError){
+      statusEl.textContent = message;
+      statusEl.className = 'status ' + (isError ? 'err' : 'ok');
+    }
 
     function sortUsers(users){
       const rows=[...users];
@@ -608,6 +656,7 @@ const userProfileHtml = `<!doctype html>
 <body>
   <div class="bg-glow left"></div>
   <div class="bg-glow right"></div>
+  ${navbarHtml}
 
   <main class="shell profile-wrap">
     <section class="panel">
@@ -622,10 +671,10 @@ const userProfileHtml = `<!doctype html>
           <div class="meta-line">
             <span><span class="k" id="recentTrade">0</span> recent trade</span>
             <span><span class="k" id="copyTrade">0</span> copy trade</span>
-            <span><span class="k" id="followers">0</span> followers</span>
-            <span><span class="k" id="following">0</span> following</span>
+            <a id="followersLink" class="meta-link" href="#" target="_blank" rel="noopener noreferrer"><span class="k" id="followers">0</span> followers</a>
+            <a id="followingLink" class="meta-link" href="#" target="_blank" rel="noopener noreferrer"><span class="k" id="following">0</span> following</a>
             <span>📅 Joined <span id="joined">-</span></span>
-            <span><span class="dot">?</span> Online</span>
+            <span><span class="dot">*</span> Online</span>
           </div>
 
           <div class="owner-section">
@@ -651,6 +700,8 @@ const userProfileHtml = `<!doctype html>
       <div id="trades" class="trade-list"></div>
     </section>
   </main>
+
+  ${footerHtml}
 
   <script>
     const parts = window.location.pathname.split('/').filter(Boolean);
