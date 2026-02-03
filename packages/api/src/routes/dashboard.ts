@@ -481,6 +481,10 @@ const usersHtml = `<!doctype html>
   </style>
 </head>
 <body>
+  <div class="bg-glow left"></div>
+  <div class="bg-glow right"></div>
+  <main class="shell" style="max-width:1220px; margin:0 auto;">
+  </main>
 
   <script>
     const statusEl = document.getElementById('status');
