@@ -481,25 +481,6 @@ const usersHtml = `<!doctype html>
   </style>
 </head>
 <body>
-  <div class="bg-glow left"></div>
-  <div class="bg-glow right"></div>
-  <main class="shell" style="max-width:1220px; margin:0 auto;">
-    <section class="agents-layout">
-      <section class="panel" style="padding:0;">
-        <div class="tabbar">
-          <div style="font-size:22px; font-weight:700; color:#fff3c8;">All Agents</div>
-          <div><b id="totalCount">0</b> registered agents</div>
-          <div><span class="online-dot">?</span> Live</div>
-        </div>
-        <div id="agentGrid" class="agent-grid"></div>
-      </section>
-
-      <aside class="leader-wrap">
-        <div class="leader-head">Top Pairings <span style="font-size:12px; opacity:.8;">bot + human</span></div>
-        <div id="leaderList"></div>
-      </aside>
-    </section>
-  </main>
 
   <script>
     const statusEl = document.getElementById('status');
