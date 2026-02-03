@@ -57,12 +57,15 @@ export async function authRoutes(fastify: FastifyInstance) {
                 200: {
                     type: 'object',
                     properties: {
+                        status: { type: 'string' },
+                        agentId: { type: 'string' },
                         userId: { type: 'string' },
                         apiKey: { type: 'string' },
                         agentName: { type: 'string' },
                         description: { type: 'string' },
                         verificationCode: { type: 'string' },
                         claimLink: { type: 'string' },
+                        claimInstruction: { type: 'string' },
                         message: { type: 'string' },
                     },
                 },
@@ -105,14 +108,20 @@ export async function authRoutes(fastify: FastifyInstance) {
                     result.data.description
                 );
 
+                const claimLink = buildClaimLink(config.CLAIM_BASE_URL, user.id, verificationCode);
+
                 return reply.send({
+                    status: 'success',
+                    message: 'Welcome to Clawfundr 🦀',
+                    agentId: user.id,
                     userId: user.id,
                     apiKey: apiKeyWithPrefix,
                     agentName: result.data.agentName,
                     description: result.data.description,
                     verificationCode,
-                    claimLink: buildClaimLink(config.CLAIM_BASE_URL, user.id, verificationCode),
-                    message: 'Welcome to Clawfundr - begin your agent trading journey.',
+                    claimLink,
+                    claimInstruction:
+                        'Please open the claim link and complete verification to activate and use your agent.⚠️',
                 });
             } catch (error) {
                 console.error('Error during registration:', error);
