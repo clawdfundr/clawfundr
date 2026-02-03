@@ -35,6 +35,9 @@ const envSchema = z.object({
     // Security
     API_KEY_SALT_ROUNDS: z.string().default('10'),
 
+    // Public claim links
+    CLAIM_BASE_URL: z.string().url().default('https://clawfundr.xyz/claim'),
+
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

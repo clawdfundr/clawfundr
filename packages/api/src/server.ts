@@ -150,6 +150,7 @@ async function start() {
 
 Endpoints:
   GET  /dashboard
+  GET  /claim/:userId
   GET  /health
   POST /v1/auth/register
   GET  /v1/agents/stats
@@ -157,6 +158,9 @@ Endpoints:
   GET  /v1/agents/me
   POST /v1/agents/verify/auto
   POST /v1/agents/verify
+  GET  /v1/agents/claim/:userId?code=...
+  POST /v1/agents/claim/:userId/verify-auto
+  POST /v1/agents/claim/:userId/verify
   POST /v1/auth/keys
   GET  /v1/auth/keys
   DELETE /v1/auth/keys/:id

@@ -12,7 +12,8 @@ import {
 import { getEnvConfig } from '../config/env';
 
 const registerSchema = z.object({
-    name: z.string().min(1, 'Name is required').optional(),
+    agentName: z.string().min(2, 'Agent name is required'),
+    description: z.string().min(8, 'Description must be at least 8 characters'),
 });
 
 const createKeySchema = z.object({
@@ -31,22 +32,24 @@ function generateVerificationCode(): string {
     return code;
 }
 
-function buildTweetIntentUrl(code: string): string {
-    const text = `I made an agent registration code on Clawfundr code: ${code}`;
-    return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+function buildClaimLink(baseUrl: string, userId: string, code: string): string {
+    const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    return `${base}/${userId}?code=${encodeURIComponent(code)}`;
 }
 
 /**
  * Authentication & API key management endpoints
  */
 export async function authRoutes(fastify: FastifyInstance) {
-    // POST /v1/auth/register - Self-service registration + Twitter verification seed
+    // POST /v1/auth/register - Register agent + receive API key + claim link
     fastify.post('/v1/auth/register', {
         schema: {
             body: {
                 type: 'object',
+                required: ['agentName', 'description'],
                 properties: {
-                    name: { type: 'string' },
+                    agentName: { type: 'string' },
+                    description: { type: 'string' },
                 },
             },
             response: {
@@ -55,8 +58,10 @@ export async function authRoutes(fastify: FastifyInstance) {
                     properties: {
                         userId: { type: 'string' },
                         apiKey: { type: 'string' },
+                        agentName: { type: 'string' },
+                        description: { type: 'string' },
                         verificationCode: { type: 'string' },
-                        tweetIntentUrl: { type: 'string' },
+                        claimLink: { type: 'string' },
                         message: { type: 'string' },
                     },
                 },
@@ -81,21 +86,24 @@ export async function authRoutes(fastify: FastifyInstance) {
                 const saltRounds = parseInt(config.API_KEY_SALT_ROUNDS, 10);
                 const keyHash = await bcrypt.hash(apiKeyWithPrefix, saltRounds);
 
-                const label = result.data.name
-                    ? `${result.data.name}'s API Key`
-                    : 'Default API Key';
-                await createApiKey(user.id, keyHash, label);
+                await createApiKey(user.id, keyHash, `${result.data.agentName} API Key`);
 
                 const verificationCode = generateVerificationCode();
-                await upsertAgentProfile(user.id, verificationCode, result.data.name);
+                await upsertAgentProfile(
+                    user.id,
+                    verificationCode,
+                    result.data.agentName,
+                    result.data.description
+                );
 
                 return reply.send({
                     userId: user.id,
                     apiKey: apiKeyWithPrefix,
+                    agentName: result.data.agentName,
+                    description: result.data.description,
                     verificationCode,
-                    tweetIntentUrl: buildTweetIntentUrl(verificationCode),
-                    message:
-                        'Registration successful! Save your API key, publish verification tweet, then verify to unlock your agent dashboard.',
+                    claimLink: buildClaimLink(config.CLAIM_BASE_URL, user.id, verificationCode),
+                    message: 'Welcome to Clawfundr - begin your agent trading journey.',
                 });
             } catch (error) {
                 console.error('Error during registration:', error);

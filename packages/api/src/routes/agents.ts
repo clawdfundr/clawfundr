@@ -13,8 +13,21 @@ import {
 } from '../db/client';
 
 const verifySchema = z.object({
-    tweetUrl: z.string().url('Tweet URL must be a valid URL'),
+    tweetUrl: z.string().url('Tweet URL must be a valid URL').optional(),
+    code: z.string().min(4, 'Verification code is required'),
 });
+
+function getAgentName(profile: { agent_name: string | null; display_name: string | null }): string {
+    return profile.agent_name || profile.display_name || 'Unnamed Agent';
+}
+
+function createTweetText(agentName: string, code: string): string {
+    return `I made an agent registration code on Clawfundr code: ${code} | Agent: ${agentName}`;
+}
+
+function createTweetIntentUrl(text: string): string {
+    return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+}
 
 function isValidTweetUrl(url: string): boolean {
     return /^https?:\/\/(?:www\.)?(?:x|twitter)\.com\/[A-Za-z0-9_]{1,15}\/status\/\d+/i.test(url);
@@ -40,8 +53,7 @@ async function verifyTweetContainsCode(tweetUrl: string, verificationCode: strin
             return { ok: false, reason: 'Unable to read tweet content for verification.' };
         }
 
-        const normalizedCode = verificationCode.toLowerCase();
-        if (!html.includes(normalizedCode)) {
+        if (!html.includes(verificationCode.toLowerCase())) {
             return {
                 ok: false,
                 reason: `Tweet found, but verification code ${verificationCode} was not detected in the tweet text.`,
@@ -56,7 +68,6 @@ async function verifyTweetContainsCode(tweetUrl: string, verificationCode: strin
 }
 
 export async function agentRoutes(fastify: FastifyInstance) {
-    // Public stats
     fastify.get('/v1/agents/stats', {
         handler: async (_request, reply) => {
             try {
@@ -76,7 +87,6 @@ export async function agentRoutes(fastify: FastifyInstance) {
         },
     });
 
-    // Public directory
     fastify.get('/v1/agents', {
         handler: async (_request, reply) => {
             try {
@@ -84,7 +94,8 @@ export async function agentRoutes(fastify: FastifyInstance) {
                 return reply.send({
                     agents: agents.map((agent) => ({
                         userId: agent.user_id,
-                        displayName: agent.display_name,
+                        agentName: getAgentName(agent),
+                        description: agent.description,
                         verificationStatus: agent.verification_status,
                         createdAt: agent.created_at.toISOString(),
                         verifiedAt: agent.verified_at ? agent.verified_at.toISOString() : null,
@@ -100,7 +111,6 @@ export async function agentRoutes(fastify: FastifyInstance) {
         },
     });
 
-    // Authenticated profile summary
     fastify.get('/v1/agents/me', {
         preHandler: fastify.auth([fastify.authenticate]),
         handler: async (request, reply) => {
@@ -119,7 +129,8 @@ export async function agentRoutes(fastify: FastifyInstance) {
                     profile: profile
                         ? {
                               userId: profile.user_id,
-                              displayName: profile.display_name,
+                              agentName: getAgentName(profile),
+                              description: profile.description,
                               verificationCode: profile.verification_code,
                               verificationStatus: profile.verification_status,
                               tweetUrl: profile.tweet_url,
@@ -145,67 +156,64 @@ export async function agentRoutes(fastify: FastifyInstance) {
         },
     });
 
-    // Auto verification (best-effort)
-    fastify.post('/v1/agents/verify/auto', {
-        preHandler: fastify.auth([fastify.authenticate]),
+    // Claim page data (public, code-gated)
+    fastify.get('/v1/agents/claim/:userId', {
         handler: async (request, reply) => {
-            const userId = request.userId!;
+            const { userId } = request.params as { userId: string };
+            const { code } = (request.query || {}) as { code?: string };
+
+            if (!code) {
+                return (reply as any).status(400).send({
+                    error: 'Validation Error',
+                    message: 'Missing claim verification code in query string.',
+                });
+            }
 
             try {
                 const profile = await getAgentProfile(userId);
                 if (!profile) {
                     return (reply as any).status(404).send({
                         error: 'Not Found',
-                        message: 'Agent profile not found for this user.',
+                        message: 'Claim profile not found.',
                     });
                 }
 
-                if (profile.verification_status === 'verified') {
-                    return reply.send({
-                        verified: true,
-                        message: 'Agent is already verified.',
-                        profile,
+                if (profile.verification_code !== code) {
+                    return (reply as any).status(403).send({
+                        error: 'Forbidden',
+                        message: 'Invalid claim code.',
                     });
                 }
 
-                if (!profile.tweet_url) {
-                    return reply.send({
-                        verified: false,
-                        message:
-                            'Automatic verification could not find a tweet yet. Submit your tweet URL manually for verification.',
-                    });
-                }
+                const agentName = getAgentName(profile);
+                const tweetText = createTweetText(agentName, profile.verification_code);
 
-                const check = await verifyTweetContainsCode(profile.tweet_url, profile.verification_code);
-                if (!check.ok) {
-                    return reply.send({
-                        verified: false,
-                        message: check.reason,
-                    });
-                }
-
-                const verified = await markAgentVerified(userId, profile.tweet_url);
                 return reply.send({
-                    verified: true,
-                    message: 'Verification successful.',
-                    profile: verified,
+                    userId: profile.user_id,
+                    agentName,
+                    description: profile.description,
+                    verificationCode: profile.verification_code,
+                    verificationStatus: profile.verification_status,
+                    tweetTemplate: tweetText,
+                    tweetIntentUrl: createTweetIntentUrl(tweetText),
+                    tweetUrl: profile.tweet_url,
+                    verifiedAt: profile.verified_at ? profile.verified_at.toISOString() : null,
                 });
             } catch (error) {
-                console.error('Error auto-verifying agent:', error);
+                console.error('Error loading claim profile:', error);
                 return (reply as any).status(500).send({
                     error: 'Internal Server Error',
-                    message: 'Failed to auto-verify agent',
+                    message: 'Failed to load claim profile',
                 });
             }
         },
     });
 
-    // Manual verification
-    fastify.post('/v1/agents/verify', {
-        preHandler: fastify.auth([fastify.authenticate]),
+    // Claim auto verify attempt (checks stored tweet URL first)
+    fastify.post('/v1/agents/claim/:userId/verify-auto', {
         handler: async (request, reply) => {
-            const userId = request.userId!;
-            const parsed = verifySchema.safeParse(request.body);
+            const { userId } = request.params as { userId: string };
+            const parsed = verifySchema.safeParse(request.body || {});
 
             if (!parsed.success) {
                 return (reply as any).status(400).send({
@@ -219,20 +227,90 @@ export async function agentRoutes(fastify: FastifyInstance) {
                 if (!profile) {
                     return (reply as any).status(404).send({
                         error: 'Not Found',
-                        message: 'Agent profile not found for this user.',
+                        message: 'Claim profile not found.',
+                    });
+                }
+
+                if (profile.verification_code !== parsed.data.code) {
+                    return (reply as any).status(403).send({
+                        error: 'Forbidden',
+                        message: 'Invalid claim code.',
+                    });
+                }
+
+                if (profile.verification_status === 'verified') {
+                    return reply.send({
+                        verified: true,
+                        message: 'Agent already verified.',
+                        profile,
+                    });
+                }
+
+                const candidateUrl = parsed.data.tweetUrl?.trim() || profile.tweet_url || '';
+                if (!candidateUrl) {
+                    return reply.send({
+                        verified: false,
+                        message: 'Automatic verification failed. Submit tweet URL manually for re-verification.',
+                    });
+                }
+
+                await saveAgentTweetUrl(userId, candidateUrl);
+                const check = await verifyTweetContainsCode(candidateUrl, profile.verification_code);
+
+                if (!check.ok) {
+                    return reply.send({
+                        verified: false,
+                        message: check.reason,
+                    });
+                }
+
+                const verified = await markAgentVerified(userId, candidateUrl);
+                return reply.send({
+                    verified: true,
+                    message: 'Verification successful.',
+                    profile: verified,
+                });
+            } catch (error) {
+                console.error('Error auto-verifying claim:', error);
+                return (reply as any).status(500).send({
+                    error: 'Internal Server Error',
+                    message: 'Failed to verify claim automatically',
+                });
+            }
+        },
+    });
+
+    // Claim manual verify
+    fastify.post('/v1/agents/claim/:userId/verify', {
+        handler: async (request, reply) => {
+            const { userId } = request.params as { userId: string };
+            const parsed = verifySchema.safeParse(request.body || {});
+
+            if (!parsed.success || !parsed.data.tweetUrl) {
+                return (reply as any).status(400).send({
+                    error: 'Validation Error',
+                    message: 'Tweet URL and code are required.',
+                });
+            }
+
+            try {
+                const profile = await getAgentProfile(userId);
+                if (!profile) {
+                    return (reply as any).status(404).send({
+                        error: 'Not Found',
+                        message: 'Claim profile not found.',
+                    });
+                }
+
+                if (profile.verification_code !== parsed.data.code) {
+                    return (reply as any).status(403).send({
+                        error: 'Forbidden',
+                        message: 'Invalid claim code.',
                     });
                 }
 
                 const tweetUrl = parsed.data.tweetUrl.trim();
                 await saveAgentTweetUrl(userId, tweetUrl);
-
-                if (profile.verification_status === 'verified') {
-                    return reply.send({
-                        verified: true,
-                        message: 'Agent is already verified.',
-                        profile,
-                    });
-                }
 
                 const check = await verifyTweetContainsCode(tweetUrl, profile.verification_code);
                 if (!check.ok) {
@@ -249,10 +327,10 @@ export async function agentRoutes(fastify: FastifyInstance) {
                     profile: verified,
                 });
             } catch (error) {
-                console.error('Error verifying agent:', error);
+                console.error('Error manual claim verify:', error);
                 return (reply as any).status(500).send({
                     error: 'Internal Server Error',
-                    message: 'Failed to verify agent',
+                    message: 'Failed to verify claim',
                 });
             }
         },

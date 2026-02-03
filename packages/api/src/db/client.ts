@@ -14,6 +14,8 @@ async function ensureAgentProfilesTable(): Promise<void> {
         CREATE TABLE IF NOT EXISTS agent_profiles (
             user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
             display_name TEXT,
+            agent_name TEXT,
+            description TEXT,
             verification_code TEXT NOT NULL UNIQUE,
             verification_status TEXT NOT NULL DEFAULT 'pending' CHECK (verification_status IN ('pending', 'verified')),
             tweet_url TEXT,
@@ -22,6 +24,9 @@ async function ensureAgentProfilesTable(): Promise<void> {
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
     `);
+
+    await query('ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS agent_name TEXT');
+    await query('ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS description TEXT');
 
     agentProfilesReady = true;
 }
@@ -233,6 +238,8 @@ export async function revokeApiKey(keyId: string, userId: string): Promise<void>
 export interface AgentProfile {
     user_id: string;
     display_name: string | null;
+    agent_name: string | null;
+    description: string | null;
     verification_code: string;
     verification_status: 'pending' | 'verified';
     tweet_url: string | null;
@@ -275,23 +282,26 @@ export interface AgentTradeItem {
 export async function upsertAgentProfile(
     userId: string,
     verificationCode: string,
-    displayName?: string
+    agentName: string,
+    description: string
 ): Promise<AgentProfile> {
     await ensureAgentProfilesTable();
 
     const result = await query<AgentProfile>(
-        `INSERT INTO agent_profiles (user_id, display_name, verification_code)
-         VALUES ($1, $2, $3)
+        `INSERT INTO agent_profiles (user_id, display_name, agent_name, description, verification_code)
+         VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (user_id)
          DO UPDATE SET
             display_name = EXCLUDED.display_name,
+            agent_name = EXCLUDED.agent_name,
+            description = EXCLUDED.description,
             verification_code = EXCLUDED.verification_code,
             verification_status = 'pending',
             tweet_url = NULL,
             verified_at = NULL,
             updated_at = NOW()
          RETURNING *`,
-        [userId, displayName || null, verificationCode]
+        [userId, agentName, agentName, description, verificationCode]
     );
 
     return result.rows[0];
