@@ -5,6 +5,7 @@ let pool: Pool | null = null;
 
 let agentProfilesReady = false;
 let agentFollowsReady = false;
+let agentCopyLinksReady = false;
 
 async function ensureAgentProfilesTable(): Promise<void> {
     if (agentProfilesReady) {
@@ -52,6 +53,29 @@ async function ensureAgentFollowsTable(): Promise<void> {
     agentFollowsReady = true;
 }
 
+
+async function ensureAgentCopyLinksTable(): Promise<void> {
+    if (agentCopyLinksReady) {
+        return;
+    }
+
+    await query(`
+        CREATE TABLE IF NOT EXISTS agent_copy_links (
+            follower_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            leader_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            mode TEXT NOT NULL DEFAULT 'paper' CHECK (mode IN ('paper', 'live')),
+            max_usd_per_trade NUMERIC,
+            status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'paused')),
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            PRIMARY KEY (follower_user_id, leader_user_id),
+            CHECK (follower_user_id <> leader_user_id)
+        )
+    `);
+
+    agentCopyLinksReady = true;
+}
+
 /**
  * Initialize database connection pool
  */
@@ -78,6 +102,10 @@ export function initDb(): Pool {
 
     ensureAgentFollowsTable().catch((err) => {
         console.error('Failed ensuring agent_follows table:', err);
+    });
+
+    ensureAgentCopyLinksTable().catch((err) => {
+        console.error('Failed ensuring agent_copy_links table:', err);
     });
 
     return pool;
@@ -285,6 +313,20 @@ export interface AgentFollowStats {
     following_count: number;
 }
 
+export interface AgentCopyStats {
+    copy_followers_count: number;
+    copying_count: number;
+}
+
+export interface AgentRelationItem {
+    user_id: string;
+    agent_name: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
+    verification_status: 'pending' | 'verified';
+    created_at: Date;
+}
+
 export interface AgentDashboardMetrics {
     requests_count: number;
     tx_count: number;
@@ -490,6 +532,140 @@ export async function getAgentFollowStats(userId: string): Promise<AgentFollowSt
     );
 
     return result.rows[0] || { followers_count: 0, following_count: 0 };
+}
+
+
+export async function followAgent(followerUserId: string, followingUserId: string): Promise<void> {
+    await ensureAgentFollowsTable();
+    await query(
+        `INSERT INTO agent_follows (follower_user_id, following_user_id)
+         VALUES ($1, $2)
+         ON CONFLICT (follower_user_id, following_user_id) DO NOTHING`,
+        [followerUserId, followingUserId]
+    );
+}
+
+export async function unfollowAgent(followerUserId: string, followingUserId: string): Promise<void> {
+    await ensureAgentFollowsTable();
+    await query(
+        `DELETE FROM agent_follows
+         WHERE follower_user_id = $1 AND following_user_id = $2`,
+        [followerUserId, followingUserId]
+    );
+}
+
+export async function listFollowingAgents(userId: string, limit: number = 100): Promise<AgentRelationItem[]> {
+    await ensureAgentProfilesTable();
+    await ensureAgentFollowsTable();
+
+    const result = await query<AgentRelationItem>(
+        `SELECT ap.user_id, ap.agent_name, ap.display_name, ap.avatar_url, ap.verification_status, af.created_at
+         FROM agent_follows af
+         JOIN agent_profiles ap ON ap.user_id = af.following_user_id
+         WHERE af.follower_user_id = $1
+         ORDER BY af.created_at DESC
+         LIMIT $2`,
+        [userId, limit]
+    );
+
+    return result.rows;
+}
+
+export async function listFollowerAgents(userId: string, limit: number = 100): Promise<AgentRelationItem[]> {
+    await ensureAgentProfilesTable();
+    await ensureAgentFollowsTable();
+
+    const result = await query<AgentRelationItem>(
+        `SELECT ap.user_id, ap.agent_name, ap.display_name, ap.avatar_url, ap.verification_status, af.created_at
+         FROM agent_follows af
+         JOIN agent_profiles ap ON ap.user_id = af.follower_user_id
+         WHERE af.following_user_id = $1
+         ORDER BY af.created_at DESC
+         LIMIT $2`,
+        [userId, limit]
+    );
+
+    return result.rows;
+}
+
+export async function upsertCopyTradeLink(
+    followerUserId: string,
+    leaderUserId: string,
+    mode: 'paper' | 'live' = 'paper',
+    maxUsdPerTrade?: number | null,
+    status: 'active' | 'paused' = 'active'
+): Promise<void> {
+    await ensureAgentCopyLinksTable();
+
+    await query(
+        `INSERT INTO agent_copy_links (follower_user_id, leader_user_id, mode, max_usd_per_trade, status, updated_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())
+         ON CONFLICT (follower_user_id, leader_user_id)
+         DO UPDATE SET
+            mode = EXCLUDED.mode,
+            max_usd_per_trade = EXCLUDED.max_usd_per_trade,
+            status = EXCLUDED.status,
+            updated_at = NOW()`,
+        [followerUserId, leaderUserId, mode, maxUsdPerTrade ?? null, status]
+    );
+}
+
+export async function removeCopyTradeLink(followerUserId: string, leaderUserId: string): Promise<void> {
+    await ensureAgentCopyLinksTable();
+    await query(
+        `DELETE FROM agent_copy_links
+         WHERE follower_user_id = $1 AND leader_user_id = $2`,
+        [followerUserId, leaderUserId]
+    );
+}
+
+export async function getAgentCopyStats(userId: string): Promise<AgentCopyStats> {
+    await ensureAgentCopyLinksTable();
+
+    const result = await query<AgentCopyStats>(
+        `SELECT
+            (SELECT COUNT(*)::int FROM agent_copy_links WHERE leader_user_id = $1 AND status = 'active') AS copy_followers_count,
+            (SELECT COUNT(*)::int FROM agent_copy_links WHERE follower_user_id = $1 AND status = 'active') AS copying_count`,
+        [userId]
+    );
+
+    return result.rows[0] || { copy_followers_count: 0, copying_count: 0 };
+}
+
+export async function listCopyingAgents(userId: string, limit: number = 100): Promise<AgentRelationItem[]> {
+    await ensureAgentProfilesTable();
+    await ensureAgentCopyLinksTable();
+
+    const result = await query<AgentRelationItem>(
+        `SELECT ap.user_id, ap.agent_name, ap.display_name, ap.avatar_url, ap.verification_status, cl.created_at
+         FROM agent_copy_links cl
+         JOIN agent_profiles ap ON ap.user_id = cl.leader_user_id
+         WHERE cl.follower_user_id = $1
+           AND cl.status = 'active'
+         ORDER BY cl.created_at DESC
+         LIMIT $2`,
+        [userId, limit]
+    );
+
+    return result.rows;
+}
+
+export async function listCopyFollowers(userId: string, limit: number = 100): Promise<AgentRelationItem[]> {
+    await ensureAgentProfilesTable();
+    await ensureAgentCopyLinksTable();
+
+    const result = await query<AgentRelationItem>(
+        `SELECT ap.user_id, ap.agent_name, ap.display_name, ap.avatar_url, ap.verification_status, cl.created_at
+         FROM agent_copy_links cl
+         JOIN agent_profiles ap ON ap.user_id = cl.follower_user_id
+         WHERE cl.leader_user_id = $1
+           AND cl.status = 'active'
+         ORDER BY cl.created_at DESC
+         LIMIT $2`,
+        [userId, limit]
+    );
+
+    return result.rows;
 }
 
 export async function getAgentDashboardMetrics(userId: string): Promise<AgentDashboardMetrics> {

@@ -1,7 +1,9 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
+    followAgent,
     getAgentActivity,
+    getAgentCopyStats,
     getAgentFollowStats,
     getAgentDashboardMetrics,
     getAgentProfile,
@@ -10,14 +12,32 @@ import {
     getAgentTrades,
     getVerifiedAgentByName,
     listAgents,
+    listCopyFollowers,
+    listCopyingAgents,
+    listFollowerAgents,
+    listFollowingAgents,
     listVerifiedAgentsWithStats,
     markAgentVerified,
+    removeCopyTradeLink,
     saveAgentTweetUrl,
+    unfollowAgent,
+    upsertCopyTradeLink,
 } from '../db/client';
 
 const verifySchema = z.object({
     tweetUrl: z.string().url('Tweet URL must be a valid URL').optional(),
     code: z.string().min(4, 'Verification code is required'),
+});
+
+
+const followSchema = z.object({
+    targetUserId: z.string().uuid('targetUserId must be a valid UUID'),
+});
+
+const copyTradeSchema = z.object({
+    leaderUserId: z.string().uuid('leaderUserId must be a valid UUID'),
+    mode: z.enum(['paper', 'live']).default('paper'),
+    maxUsdPerTrade: z.number().positive().optional(),
 });
 
 function getAgentName(profile: { agent_name: string | null; display_name: string | null }): string {
@@ -238,6 +258,228 @@ export async function agentRoutes(fastify: FastifyInstance) {
         },
     });
 
+
+    fastify.post('/v1/agents/follow', {
+        preHandler: fastify.auth([fastify.authenticate]),
+        handler: async (request, reply) => {
+            const userId = request.userId!;
+            const parsed = followSchema.safeParse(request.body || {});
+
+            if (!parsed.success) {
+                return (reply as any).status(400).send({
+                    error: 'Validation Error',
+                    message: parsed.error.errors[0].message,
+                });
+            }
+
+            const { targetUserId } = parsed.data;
+            if (targetUserId === userId) {
+                return (reply as any).status(400).send({
+                    error: 'Validation Error',
+                    message: 'You cannot follow yourself.',
+                });
+            }
+
+            try {
+                const targetProfile = await getAgentProfile(targetUserId);
+                if (!targetProfile) {
+                    return (reply as any).status(404).send({
+                        error: 'Not Found',
+                        message: 'Target agent not found.',
+                    });
+                }
+
+                await followAgent(userId, targetUserId);
+                const followStats = await getAgentFollowStats(userId);
+                return reply.send({
+                    success: true,
+                    message: 'Agent followed successfully.',
+                    followStats,
+                });
+            } catch (error) {
+                console.error('Error following agent:', error);
+                return (reply as any).status(500).send({
+                    error: 'Internal Server Error',
+                    message: 'Failed to follow agent',
+                });
+            }
+        },
+    });
+
+    fastify.delete('/v1/agents/follow/:targetUserId', {
+        preHandler: fastify.auth([fastify.authenticate]),
+        handler: async (request, reply) => {
+            const userId = request.userId!;
+            const { targetUserId } = request.params as { targetUserId: string };
+
+            try {
+                await unfollowAgent(userId, targetUserId);
+                const followStats = await getAgentFollowStats(userId);
+                return reply.send({
+                    success: true,
+                    message: 'Agent unfollowed successfully.',
+                    followStats,
+                });
+            } catch (error) {
+                console.error('Error unfollowing agent:', error);
+                return (reply as any).status(500).send({
+                    error: 'Internal Server Error',
+                    message: 'Failed to unfollow agent',
+                });
+            }
+        },
+    });
+
+    fastify.get('/v1/agents/following', {
+        preHandler: fastify.auth([fastify.authenticate]),
+        handler: async (request, reply) => {
+            const userId = request.userId!;
+
+            try {
+                const following = await listFollowingAgents(userId, 200);
+                return reply.send({ following });
+            } catch (error) {
+                console.error('Error loading following agents:', error);
+                return (reply as any).status(500).send({
+                    error: 'Internal Server Error',
+                    message: 'Failed to load following agents',
+                });
+            }
+        },
+    });
+
+    fastify.get('/v1/agents/followers', {
+        preHandler: fastify.auth([fastify.authenticate]),
+        handler: async (request, reply) => {
+            const userId = request.userId!;
+
+            try {
+                const followers = await listFollowerAgents(userId, 200);
+                return reply.send({ followers });
+            } catch (error) {
+                console.error('Error loading agent followers:', error);
+                return (reply as any).status(500).send({
+                    error: 'Internal Server Error',
+                    message: 'Failed to load agent followers',
+                });
+            }
+        },
+    });
+
+    fastify.post('/v1/agents/copy-trade', {
+        preHandler: fastify.auth([fastify.authenticate]),
+        handler: async (request, reply) => {
+            const userId = request.userId!;
+            const parsed = copyTradeSchema.safeParse(request.body || {});
+
+            if (!parsed.success) {
+                return (reply as any).status(400).send({
+                    error: 'Validation Error',
+                    message: parsed.error.errors[0].message,
+                });
+            }
+
+            const { leaderUserId, mode, maxUsdPerTrade } = parsed.data;
+            if (leaderUserId === userId) {
+                return (reply as any).status(400).send({
+                    error: 'Validation Error',
+                    message: 'You cannot copy trade yourself.',
+                });
+            }
+
+            try {
+                const leaderProfile = await getAgentProfile(leaderUserId);
+                if (!leaderProfile) {
+                    return (reply as any).status(404).send({
+                        error: 'Not Found',
+                        message: 'Leader agent not found.',
+                    });
+                }
+
+                if (leaderProfile.verification_status !== 'verified') {
+                    return (reply as any).status(400).send({
+                        error: 'Validation Error',
+                        message: 'Leader agent is not verified yet.',
+                    });
+                }
+
+                await upsertCopyTradeLink(userId, leaderUserId, mode, maxUsdPerTrade, 'active');
+                const copyStats = await getAgentCopyStats(userId);
+                return reply.send({
+                    success: true,
+                    message: `Copy trade enabled in ${mode} mode.`,
+                    copyStats,
+                });
+            } catch (error) {
+                console.error('Error enabling copy trade:', error);
+                return (reply as any).status(500).send({
+                    error: 'Internal Server Error',
+                    message: 'Failed to enable copy trade',
+                });
+            }
+        },
+    });
+
+    fastify.delete('/v1/agents/copy-trade/:leaderUserId', {
+        preHandler: fastify.auth([fastify.authenticate]),
+        handler: async (request, reply) => {
+            const userId = request.userId!;
+            const { leaderUserId } = request.params as { leaderUserId: string };
+
+            try {
+                await removeCopyTradeLink(userId, leaderUserId);
+                const copyStats = await getAgentCopyStats(userId);
+                return reply.send({
+                    success: true,
+                    message: 'Copy trade removed successfully.',
+                    copyStats,
+                });
+            } catch (error) {
+                console.error('Error removing copy trade:', error);
+                return (reply as any).status(500).send({
+                    error: 'Internal Server Error',
+                    message: 'Failed to remove copy trade',
+                });
+            }
+        },
+    });
+
+    fastify.get('/v1/agents/copy-trade/following', {
+        preHandler: fastify.auth([fastify.authenticate]),
+        handler: async (request, reply) => {
+            const userId = request.userId!;
+
+            try {
+                const leaders = await listCopyingAgents(userId, 200);
+                return reply.send({ leaders });
+            } catch (error) {
+                console.error('Error loading copy trade leaders:', error);
+                return (reply as any).status(500).send({
+                    error: 'Internal Server Error',
+                    message: 'Failed to load copy trade leaders',
+                });
+            }
+        },
+    });
+
+    fastify.get('/v1/agents/copy-trade/followers', {
+        preHandler: fastify.auth([fastify.authenticate]),
+        handler: async (request, reply) => {
+            const userId = request.userId!;
+
+            try {
+                const followers = await listCopyFollowers(userId, 200);
+                return reply.send({ followers });
+            } catch (error) {
+                console.error('Error loading copy trade followers:', error);
+                return (reply as any).status(500).send({
+                    error: 'Internal Server Error',
+                    message: 'Failed to load copy trade followers',
+                });
+            }
+        },
+    });
+
     // Public users directory (verified agents)
     fastify.get('/v1/users', {
         handler: async (_request, reply) => {
@@ -290,6 +532,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
                 const activity = await getAgentActivity(profile.user_id, 20);
                 const skillUsage = await getAgentSkillUsage(profile.user_id, 10);
                 const followStats = await getAgentFollowStats(profile.user_id);
+                const copyStats = await getAgentCopyStats(profile.user_id);
 
                 const normalizedName = getAgentName(profile);
                 const twitterHandle = (await resolveTwitterHandleFromTweetUrl(profile.tweet_url)) || null;
@@ -309,6 +552,8 @@ export async function agentRoutes(fastify: FastifyInstance) {
                         tweetUrl: profile.tweet_url,
                         agentFollowers: followStats.followers_count || 0,
                         agentFollowing: followStats.following_count || 0,
+                        copyFollowers: copyStats.copy_followers_count || 0,
+                        copying: copyStats.copying_count || 0,
                         twitterFollowers: xMetrics?.followersCount ?? null,
                         twitterFollowing: xMetrics?.followingCount ?? null,
                     },
@@ -336,12 +581,14 @@ export async function agentRoutes(fastify: FastifyInstance) {
             const userId = request.userId!;
 
             try {
-                const [profile, metrics, skillUsage, recentActivity, recentTrades] = await Promise.all([
+                const [profile, metrics, skillUsage, recentActivity, recentTrades, followStats, copyStats] = await Promise.all([
                     getAgentProfile(userId),
                     getAgentDashboardMetrics(userId),
                     getAgentSkillUsage(userId, 10),
                     getAgentActivity(userId, 20),
                     getAgentTrades(userId, 20),
+                    getAgentFollowStats(userId),
+                    getAgentCopyStats(userId),
                 ]);
 
                 return reply.send({
@@ -366,6 +613,8 @@ export async function agentRoutes(fastify: FastifyInstance) {
                         ts: item.ts.toISOString(),
                     })),
                     recentTrades,
+                    followStats,
+                    copyStats,
                 });
             } catch (error) {
                 console.error('Error loading agent profile:', error);
