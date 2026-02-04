@@ -43,7 +43,7 @@ function getTwitterHandle(tweetUrl: string | null): string | null {
 }
 
 function createTweetText(agentName: string, code: string): string {
-    return `I'm claiming my AI agent "${agentName}" on @clawfundr \u{1F980}\n\nVerification: claw-${code}`;
+    return `I'm claiming my AI agent "${agentName}" on @clawfundrai \u{1F980}\n\nVerification: claw-${code}`;
 }
 
 function createTweetIntentUrl(text: string): string {
