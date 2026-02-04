@@ -1,4 +1,11 @@
 import { FastifyInstance } from 'fastify';
+import { readFile } from 'fs/promises';
+import { resolve } from 'path';
+
+const faviconLinks = `
+  <link rel="icon" type="image/png" href="/logo.png" />
+  <link rel="shortcut icon" type="image/png" href="/logo.png" />
+`;
 
 const sharedStyles = `
   <style>
@@ -344,6 +351,7 @@ const dashboardHtml = `<!doctype html>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Clawfundr Dashboard</title>
+  ${faviconLinks}
   ${sharedStyles}
 </head>
 <body>
@@ -568,6 +576,7 @@ const claimHtml = `<!doctype html>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Clawfundr Claim</title>
+  ${faviconLinks}
   ${sharedStyles}
 </head>
 <body>
@@ -736,6 +745,7 @@ const usersHtml = `<!doctype html>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Clawfundr Users</title>
+  ${faviconLinks}
   ${sharedStyles}
   <style>
     .tabbar { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-bottom:1px solid var(--line); }
@@ -882,6 +892,7 @@ const userProfileHtml = `<!doctype html>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Clawfundr Agent Profile</title>
+  ${faviconLinks}
   ${sharedStyles}
   <style>
     .profile-wrap { width: 100%; margin: 0; }
@@ -1083,6 +1094,16 @@ const userProfileHtml = `<!doctype html>
 </html>`;
 
 export async function dashboardRoutes(fastify: FastifyInstance) {
+    fastify.get('/logo.png', async (_request, reply) => {
+        try {
+            const filePath = resolve(__dirname, '../../../logo.png');
+            const file = await readFile(filePath);
+            reply.type('image/png').send(file);
+        } catch {
+            reply.status(404).send({ error: 'Not Found', message: 'logo.png not found' });
+        }
+    });
+
     fastify.get('/dashboard', async (_request, reply) => {
         reply.type('text/html').send(dashboardHtml);
     });
