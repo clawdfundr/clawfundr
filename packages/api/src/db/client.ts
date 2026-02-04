@@ -4,6 +4,7 @@ import { getEnvConfig } from '../config/env';
 let pool: Pool | null = null;
 
 let agentProfilesReady = false;
+let agentFollowsReady = false;
 
 async function ensureAgentProfilesTable(): Promise<void> {
     if (agentProfilesReady) {
@@ -31,6 +32,24 @@ async function ensureAgentProfilesTable(): Promise<void> {
     agentProfilesReady = true;
 }
 
+async function ensureAgentFollowsTable(): Promise<void> {
+    if (agentFollowsReady) {
+        return;
+    }
+
+    await query(`
+        CREATE TABLE IF NOT EXISTS agent_follows (
+            follower_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            following_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            PRIMARY KEY (follower_user_id, following_user_id),
+            CHECK (follower_user_id <> following_user_id)
+        )
+    `);
+
+    agentFollowsReady = true;
+}
+
 /**
  * Initialize database connection pool
  */
@@ -53,6 +72,10 @@ export function initDb(): Pool {
 
     ensureAgentProfilesTable().catch((err) => {
         console.error('Failed ensuring agent_profiles table:', err);
+    });
+
+    ensureAgentFollowsTable().catch((err) => {
+        console.error('Failed ensuring agent_follows table:', err);
     });
 
     return pool;
@@ -254,6 +277,11 @@ export interface AgentStats {
     pending_agents: number;
 }
 
+export interface AgentFollowStats {
+    followers_count: number;
+    following_count: number;
+}
+
 export interface AgentDashboardMetrics {
     requests_count: number;
     tx_count: number;
@@ -446,6 +474,17 @@ export async function listVerifiedAgentsWithStats(limit: number = 100): Promise<
     );
 
     return result.rows;
+}
+
+export async function getAgentFollowStats(userId: string): Promise<AgentFollowStats> {
+    const result = await query<AgentFollowStats>(
+        `SELECT
+            (SELECT COUNT(*)::int FROM agent_follows WHERE following_user_id = $1) AS followers_count,
+            (SELECT COUNT(*)::int FROM agent_follows WHERE follower_user_id = $1) AS following_count`,
+        [userId]
+    );
+
+    return result.rows[0] || { followers_count: 0, following_count: 0 };
 }
 
 export async function getAgentDashboardMetrics(userId: string): Promise<AgentDashboardMetrics> {

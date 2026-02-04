@@ -999,14 +999,17 @@ const userProfileHtml = `<!doctype html>
       joinedEl.textContent = p.joinedAt || '-';
       recentTradeEl.textContent = String(metrics.trades_count || trades.length || 0);
       copyTradeEl.textContent = '0';
-      const hasFollowers = p.twitterFollowers !== null && p.twitterFollowers !== undefined;
-      const hasFollowing = p.twitterFollowing !== null && p.twitterFollowing !== undefined;
-      const followers = hasFollowers ? Number(p.twitterFollowers) : null;
-      const following = hasFollowing ? Number(p.twitterFollowing) : null;
-      followersEl.textContent = followers === null ? '-' : String(followers);
-      followingEl.textContent = following === null ? '-' : String(following);
-      ownerFollowersEl.textContent = followers === null ? '-' : String(followers);
-      ownerFollowingEl.textContent = following === null ? '-' : String(following);
+      const agentFollowers = Number(p.agentFollowers ?? 0);
+      const agentFollowing = Number(p.agentFollowing ?? 0);
+      followersEl.textContent = String(agentFollowers);
+      followingEl.textContent = String(agentFollowing);
+
+      const hasTwitterFollowers = p.twitterFollowers !== null && p.twitterFollowers !== undefined;
+      const hasTwitterFollowing = p.twitterFollowing !== null && p.twitterFollowing !== undefined;
+      const ownerFollowers = hasTwitterFollowers ? Number(p.twitterFollowers) : null;
+      const ownerFollowing = hasTwitterFollowing ? Number(p.twitterFollowing) : null;
+      ownerFollowersEl.textContent = ownerFollowers === null ? '-' : String(ownerFollowers);
+      ownerFollowingEl.textContent = ownerFollowing === null ? '-' : String(ownerFollowing);
 
       const handle = p.twitterHandle ? '@'+p.twitterHandle : '@unlinked';
       ownerNameEl.textContent = p.twitterHandle ? p.twitterHandle : 'Unlinked Owner';
@@ -1023,16 +1026,15 @@ const userProfileHtml = `<!doctype html>
         ownerAvatarFallbackEl.textContent = 'X';
       }
 
+      followersLinkEl.href = '/users';
+      followingLinkEl.href = '/users';
+
       if (p.twitterUrl) {
         ownerLinkEl.href = p.twitterUrl;
-        followersLinkEl.href = p.twitterUrl + '/followers';
-        followingLinkEl.href = p.twitterUrl + '/following';
         ownerFollowersLinkEl.href = p.twitterUrl + '/followers';
         ownerFollowingLinkEl.href = p.twitterUrl + '/following';
       } else {
         ownerLinkEl.href = '#';
-        followersLinkEl.href = '#';
-        followingLinkEl.href = '#';
         ownerFollowersLinkEl.href = '#';
         ownerFollowingLinkEl.href = '#';
       }

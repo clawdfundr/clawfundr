@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
     getAgentActivity,
+    getAgentFollowStats,
     getAgentDashboardMetrics,
     getAgentProfile,
     getAgentSkillUsage,
@@ -287,6 +288,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
                 const trades = await getAgentTrades(profile.user_id, 30);
                 const activity = await getAgentActivity(profile.user_id, 20);
                 const skillUsage = await getAgentSkillUsage(profile.user_id, 10);
+                const followStats = await getAgentFollowStats(profile.user_id);
 
                 const normalizedName = getAgentName(profile);
                 const twitterHandle = (await resolveTwitterHandleFromTweetUrl(profile.tweet_url)) || null;
@@ -303,6 +305,8 @@ export async function agentRoutes(fastify: FastifyInstance) {
                         twitterHandle,
                         twitterUrl: twitterHandle ? `https://x.com/${twitterHandle}` : null,
                         tweetUrl: profile.tweet_url,
+                        agentFollowers: followStats.followers_count || 0,
+                        agentFollowing: followStats.following_count || 0,
                         twitterFollowers: xMetrics?.followersCount ?? null,
                         twitterFollowing: xMetrics?.followingCount ?? null,
                     },
