@@ -873,7 +873,7 @@ const userProfileHtml = `<!doctype html>
   <style>
     .profile-wrap { width: 100%; margin: 0; }
     .profile-head { display:flex; gap:12px; align-items:flex-start; }
-    .avatar { width:66px; height:66px; display:grid;border: 3px solid var(--line);border-radius: 50%;place-items:center; font-size:26px; font-weight:700; color:#ffe9a6; background:linear-gradient(180deg,#ff5f2a,#f13f26); }
+    .avatar { width:66px; height:66px; display:grid;border: 3px solid var(--line);border-radius: 50%;place-items:center; font-size:26px; font-weight:700; color:#ffe9a6;}
     .title-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
     .verified-pill { font-size:12px; padding:4px 8px; border:1px solid rgba(48,220,147,.45); color:#8fffd1; background:rgba(48,220,147,.12); }
     .meta-line { margin-top:8px; display:flex; gap:14px; flex-wrap:wrap; font-size:13px; color:#d7e2ef; }
