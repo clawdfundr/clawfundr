@@ -999,33 +999,19 @@ const userProfileHtml = `<!doctype html>
       joinedEl.textContent = p.joinedAt || '-';
       recentTradeEl.textContent = String(metrics.trades_count || trades.length || 0);
       copyTradeEl.textContent = '0';
-      const followers = Number(p.twitterFollowers ?? 0);
-      const following = Number(p.twitterFollowing ?? 0);
-      followersEl.textContent = String(followers);
-      followingEl.textContent = String(following);
-      ownerFollowersEl.textContent = String(followers);
-      ownerFollowingEl.textContent = String(following);
+      const hasFollowers = p.twitterFollowers !== null && p.twitterFollowers !== undefined;
+      const hasFollowing = p.twitterFollowing !== null && p.twitterFollowing !== undefined;
+      const followers = hasFollowers ? Number(p.twitterFollowers) : null;
+      const following = hasFollowing ? Number(p.twitterFollowing) : null;
+      followersEl.textContent = followers === null ? '-' : String(followers);
+      followingEl.textContent = following === null ? '-' : String(following);
+      ownerFollowersEl.textContent = followers === null ? '-' : String(followers);
+      ownerFollowingEl.textContent = following === null ? '-' : String(following);
 
       const handle = p.twitterHandle ? '@'+p.twitterHandle : '@unlinked';
       ownerNameEl.textContent = p.twitterHandle ? p.twitterHandle : 'Unlinked Owner';
       ownerHandleEl.textContent = handle;
 
-      // Browser-side fallback for public counts when server-side fetch is blocked/rate-limited.
-      if (p.twitterHandle && Number(followersEl.textContent || '0') === 0 && Number(followingEl.textContent || '0') === 0) {
-        fetch('https://cdn.syndication.twimg.com/widgets/followbutton/info.json?screen_names=' + encodeURIComponent(p.twitterHandle))
-          .then(function(r){ return r.ok ? r.json() : []; })
-          .then(function(arr){
-            const x = Array.isArray(arr) ? arr[0] : null;
-            if (!x) return;
-            const f1 = Number(x.followers_count || 0);
-            const f2 = Number(x.friends_count || 0);
-            followersEl.textContent = String(f1);
-            followingEl.textContent = String(f2);
-            if (ownerFollowersEl) ownerFollowersEl.textContent = String(f1);
-            if (ownerFollowingEl) ownerFollowingEl.textContent = String(f2);
-          })
-          .catch(function(){ /* no-op */ });
-      }
 
       if (p.twitterHandle) {
         ownerAvatarImgEl.src = 'https://unavatar.io/twitter/' + encodeURIComponent(p.twitterHandle);
