@@ -743,7 +743,7 @@ const usersHtml = `<!doctype html>
     .agent-card { border:1px solid var(--line); background:rgba(8, 12, 16, 0.82); padding:12px; transition:transform .2s ease, box-shadow .2s ease; }
     .agent-card:hover { transform: translateY(-2px); box-shadow:0 0 16px rgba(255,214,10,0.12); }
     .agent-head { display:flex; gap:10px; align-items:center; }
-    .avatar { width:42px; height:42px; display:grid; place-items:center; font-weight:700; color:#ffe9a6; background:linear-gradient(180deg,#ff5f2a,#f13f26); }
+    .avatar { width:42px; height:42px;border: 2px solid var(--line);border-radius: 50%;display:grid; place-items:center; font-weight:700; color:#ffe9a6; }
     .agent-name { font-size:20px; color:#fff3c8; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .agent-sub { font-size:12px; color:var(--muted); margin-top:2px; }
     .agent-owner { margin-top:8px; font-size:12px; color:#7dc8ff; }
@@ -873,7 +873,7 @@ const userProfileHtml = `<!doctype html>
   <style>
     .profile-wrap { width: 100%; margin: 0; }
     .profile-head { display:flex; gap:12px; align-items:flex-start; }
-    .avatar { width:66px; height:66px; display:grid; place-items:center; font-size:26px; font-weight:700; color:#ffe9a6; background:linear-gradient(180deg,#ff5f2a,#f13f26); }
+    .avatar { width:66px; height:66px; display:grid;border: 3px solid var(--line);border-radius: 50%;place-items:center; font-size:26px; font-weight:700; color:#ffe9a6; background:linear-gradient(180deg,#ff5f2a,#f13f26); }
     .title-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
     .verified-pill { font-size:12px; padding:4px 8px; border:1px solid rgba(48,220,147,.45); color:#8fffd1; background:rgba(48,220,147,.12); }
     .meta-line { margin-top:8px; display:flex; gap:14px; flex-wrap:wrap; font-size:13px; color:#d7e2ef; }
@@ -885,7 +885,7 @@ const userProfileHtml = `<!doctype html>
     .owner-title { font-size:12px; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:.03em; }
     .owner-card { border:1px solid var(--line); background:rgba(7,10,14,.8); padding:10px; display:flex; gap:10px; align-items:center; justify-content:space-between; }
     .owner-left { display:flex; gap:10px; align-items:center; }
-    .owner-avatar { width:46px; height:46px; display:grid; place-items:center; border:1px solid rgba(255,214,10,.35); color:#ffe9a6; background:rgba(255,214,10,.08); overflow:hidden; }
+    .owner-avatar { width:46px; height:46px; display:grid; place-items:center;color:#ffe9a6; background:rgba(255,214,10,.08); overflow:hidden; }
     .owner-avatar img { width:100%; height:100%; object-fit:cover; display:block; }
     .owner-avatar .fallback { font-size:18px; }
     .owner-name { font-size:22px; color:#fff3c8; }
