@@ -162,6 +162,7 @@ const sharedStyles = `
       transition: opacity .35s ease, visibility .35s ease;
     }
     .page-loader.hidden { opacity: 0; visibility: hidden; }
+    @keyframes loaderAutoHide { to { opacity: 0; visibility: hidden; } }
     .loader-terminal {
       border: 1px solid var(--line);
       background: rgba(8,12,16,.88);
@@ -402,6 +403,8 @@ const dashboardHtml = `<!doctype html>
 
   <script>
     window.setTimeout(function(){ const el=document.getElementById('pageLoader'); if(el) el.classList.add('hidden'); }, 260);
+    window.addEventListener('error', function(){ const el=document.getElementById('pageLoader'); if(el) el.classList.add('hidden'); });
+    window.addEventListener('unhandledrejection', function(){ const el=document.getElementById('pageLoader'); if(el) el.classList.add('hidden'); });
     const agentNameInput = document.getElementById('agentName');
     const descriptionInput = document.getElementById('description');
     const statusEl = document.getElementById('status');
@@ -597,6 +600,8 @@ const claimHtml = `<!doctype html>
 
   <script>
     window.setTimeout(function(){ const el=document.getElementById('pageLoader'); if(el) el.classList.add('hidden'); }, 260);
+    window.addEventListener('error', function(){ const el=document.getElementById('pageLoader'); if(el) el.classList.add('hidden'); });
+    window.addEventListener('unhandledrejection', function(){ const el=document.getElementById('pageLoader'); if(el) el.classList.add('hidden'); });
     const statusEl = document.getElementById('status');
     const outputEl = document.getElementById('output');
     const agentInfoEl = document.getElementById('agentInfo');
@@ -778,6 +783,8 @@ const usersHtml = `<!doctype html>
 
   <script>
     window.setTimeout(function(){ const el=document.getElementById('pageLoader'); if(el) el.classList.add('hidden'); }, 260);
+    window.addEventListener('error', function(){ const el=document.getElementById('pageLoader'); if(el) el.classList.add('hidden'); });
+    window.addEventListener('unhandledrejection', function(){ const el=document.getElementById('pageLoader'); if(el) el.classList.add('hidden'); });
     const statusEl = document.getElementById('status');
     const totalCountEl = document.getElementById('totalCount');
     const verifiedCountEl = document.getElementById('verifiedCount');
@@ -941,6 +948,8 @@ const userProfileHtml = `<!doctype html>
 
   <script>
     window.setTimeout(function(){ const el=document.getElementById('pageLoader'); if(el) el.classList.add('hidden'); }, 260);
+    window.addEventListener('error', function(){ const el=document.getElementById('pageLoader'); if(el) el.classList.add('hidden'); });
+    window.addEventListener('unhandledrejection', function(){ const el=document.getElementById('pageLoader'); if(el) el.classList.add('hidden'); });
     const parts = window.location.pathname.split('/').filter(Boolean);
     const agentNameParam = decodeURIComponent(parts[parts.length-1]||'');
     const titleEl = document.getElementById('title');
