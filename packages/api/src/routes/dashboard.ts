@@ -423,8 +423,13 @@ const dashboardHtml = `<!doctype html>
       if (!link) return '';
       try {
         const u = new URL(link);
-        if (!/\/claim\//i.test(u.pathname) && /\/[0-9a-f-]{36}$/i.test(u.pathname)) {
-          u.pathname = '/claim' + u.pathname;
+        const path = u.pathname || '';
+        const parts = path.split('/').filter(Boolean);
+        const last = parts.length ? parts[parts.length - 1] : '';
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(last);
+
+        if (!path.startsWith('/claim/') && isUuid) {
+          u.pathname = '/claim/' + last;
           return u.toString();
         }
       } catch (_e) {}
