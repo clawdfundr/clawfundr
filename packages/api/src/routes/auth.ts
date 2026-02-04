@@ -15,6 +15,11 @@ import { getEnvConfig } from '../config/env';
 const registerSchema = z.object({
     agentName: z.string().min(2, 'Agent name is required'),
     description: z.string().min(8, 'Description must be at least 8 characters'),
+    avatarUrl: z
+        .string()
+        .trim()
+        .optional()
+        .refine((value) => !value || /^https?:\/\//i.test(value), 'Avatar URL must be a valid http/https URL'),
 });
 
 const createKeySchema = z.object({
@@ -57,6 +62,7 @@ export async function authRoutes(fastify: FastifyInstance) {
                 properties: {
                     agentName: { type: 'string' },
                     description: { type: 'string' },
+                    avatarUrl: { type: 'string' },
                 },
             },
             response: {
@@ -69,6 +75,7 @@ export async function authRoutes(fastify: FastifyInstance) {
                         apiKey: { type: 'string' },
                         agentName: { type: 'string' },
                         description: { type: 'string' },
+                        avatarUrl: { type: 'string', nullable: true },
                         verificationCode: { type: 'string' },
                         claimLink: { type: 'string' },
                         claimInstruction: { type: 'string' },
@@ -111,7 +118,8 @@ export async function authRoutes(fastify: FastifyInstance) {
                     user.id,
                     verificationCode,
                     result.data.agentName,
-                    result.data.description
+                    result.data.description,
+                    result.data.avatarUrl || null
                 );
 
                 const claimLink = buildClaimLink(config.CLAIM_BASE_URL, user.id, verificationCode);
@@ -124,6 +132,7 @@ export async function authRoutes(fastify: FastifyInstance) {
                     apiKey: apiKeyWithPrefix,
                     agentName: result.data.agentName,
                     description: result.data.description,
+                    avatarUrl: result.data.avatarUrl || null,
                     verificationCode,
                     claimLink,
                     claimInstruction:

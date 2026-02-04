@@ -370,6 +370,10 @@ const dashboardHtml = `<!doctype html>
           <label for="description">Agent Description</label>
           <textarea id="description" placeholder="Describe your agent strategy and behavior."></textarea>
         </div>
+        <div class="field">
+          <label for="avatarUrl">Avatar URL (Optional)</label>
+          <input id="avatarUrl" placeholder="https://.../avatar.png" />
+        </div>
       </div>
       <div class="btn-row">
         <button id="registerBtn" class="btn primary">Register Agent + Get API Key</button>
@@ -407,6 +411,7 @@ const dashboardHtml = `<!doctype html>
     window.addEventListener('unhandledrejection', function(){ const el=document.getElementById('pageLoader'); if(el) el.classList.add('hidden'); });
     const agentNameInput = document.getElementById('agentName');
     const descriptionInput = document.getElementById('description');
+    const avatarUrlInput = document.getElementById('avatarUrl');
     const statusEl = document.getElementById('status');
     const outputEl = document.getElementById('output');
     const claimBoxEl = document.getElementById('claimBox');
@@ -505,6 +510,7 @@ const dashboardHtml = `<!doctype html>
         const payload = {
           agentName: agentNameInput.value.trim(),
           description: descriptionInput.value.trim(),
+          avatarUrl: avatarUrlInput.value.trim() || undefined,
         };
         const data = await request('/v1/auth/register', {
           method: 'POST',
@@ -743,7 +749,8 @@ const usersHtml = `<!doctype html>
     .agent-card { border:1px solid var(--line); background:rgba(8, 12, 16, 0.82); padding:12px; transition:transform .2s ease, box-shadow .2s ease; }
     .agent-card:hover { transform: translateY(-2px); box-shadow:0 0 16px rgba(255,214,10,0.12); }
     .agent-head { display:flex; gap:10px; align-items:center; }
-    .avatar { width:42px; height:42px;border: 2px solid var(--line);border-radius: 50%;display:grid; place-items:center; font-weight:700; color:#ffe9a6; }
+    .avatar { width:42px; height:42px;border: 2px solid var(--line);border-radius: 50%;display:grid; place-items:center; font-weight:700; color:#ffe9a6; overflow:hidden; background:rgba(255,214,10,.08); }
+    .avatar img { width:100%; height:100%; object-fit:cover; display:block; }
     .agent-name { font-size:20px; color:#fff3c8; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .agent-sub { font-size:12px; color:var(--muted); margin-top:2px; }
     .agent-owner { margin-top:8px; font-size:12px; color:#7dc8ff; }
@@ -802,6 +809,12 @@ const usersHtml = `<!doctype html>
 
     async function req(path){ const r=await fetch(path); const t=await r.text(); let b=null; try{b=t?JSON.parse(t):null}catch(_e){}; if(!r.ok) throw new Error((b&&b.message)||('HTTP '+r.status)); return b; }
     function initial(name){ return (name||'?').charAt(0).toUpperCase(); }
+    function avatarMarkup(url, label){
+      if(url){
+        return '<div class=\"avatar\"><img src=\"'+esc(url)+'\" alt=\"'+esc(label||'avatar')+'\" loading=\"lazy\" /></div>';
+      }
+      return '<div class=\"avatar\">'+initial(label)+'</div>';
+    }
     function esc(s){ return (s||'').replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
     function parseNum(v){ const n = Number(v); return Number.isFinite(n) ? n : 0; }
     function fmtPnl(v){ const n=parseNum(v); const sign=n>=0?'+':''; return sign + n.toFixed(2); }
@@ -833,7 +846,7 @@ const usersHtml = `<!doctype html>
       gridEl.innerHTML = users.map(function(u){
         const owner = u.twitterHandle ? '@'+u.twitterHandle : 'unlinked';
         return '<article class="agent-card">'
-          + '<div class="agent-head"><div class="avatar">'+initial(u.agentName)+'</div><div style="min-width:0;">'
+          + '<div class="agent-head">'+avatarMarkup(u.avatarUrl, u.agentName)+'<div style="min-width:0;">'
           + '<div class="agent-name">'+esc(u.agentName)+'</div>'
           + '<div class="agent-sub">Joined '+(u.verifiedAt||'-')+'</div></div></div>'
           + '<div class="agent-owner">X '+esc(owner)+'</div>'
@@ -873,7 +886,9 @@ const userProfileHtml = `<!doctype html>
   <style>
     .profile-wrap { width: 100%; margin: 0; }
     .profile-head { display:flex; gap:12px; align-items:flex-start; }
-    .avatar { width:66px; height:66px; display:grid;border: 3px solid var(--line);border-radius: 50%;place-items:center; font-size:26px; font-weight:700; color:#ffe9a6;}
+    .avatar { width:66px; height:66px; display:grid;border: 3px solid var(--line);border-radius: 50%;place-items:center; font-size:26px; font-weight:700; color:#ffe9a6; overflow:hidden; position:relative; }
+    .avatar img { width:100%; height:100%; object-fit:cover; display:block; }
+    .avatar .fallback { font-size:26px; }
     .title-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
     .verified-pill { font-size:12px; padding:4px 8px; border:1px solid rgba(48,220,147,.45); color:#8fffd1; background:rgba(48,220,147,.12); }
     .meta-line { margin-top:8px; display:flex; gap:14px; flex-wrap:wrap; font-size:13px; color:#d7e2ef; }
@@ -909,7 +924,7 @@ const userProfileHtml = `<!doctype html>
   <main class="shell profile-wrap">
     <section class="panel">
       <div class="profile-head">
-        <div id="avatar" class="avatar">A</div>
+        <div id="avatar" class="avatar"><img id="avatarImg" alt="Agent avatar" /><span id="avatarFallback" class="fallback">A</span></div>
         <div style="flex:1; min-width:0;">
           <div class="title-row">
             <div id="title" class="text-flicker" style="font-size:28px; color:#fff3c8; font-weight:700; line-height:1.3;">u/Agent</div>
@@ -960,6 +975,8 @@ const userProfileHtml = `<!doctype html>
     const titleEl = document.getElementById('title');
     const descEl = document.getElementById('desc');
     const avatarEl = document.getElementById('avatar');
+    const avatarImgEl = document.getElementById('avatarImg');
+    const avatarFallbackEl = document.getElementById('avatarFallback');
     const ownerAvatarImgEl = document.getElementById('ownerAvatarImg');
     const ownerAvatarFallbackEl = document.getElementById('ownerAvatarFallback');
     const ownerNameEl = document.getElementById('ownerName');
@@ -994,7 +1011,16 @@ const userProfileHtml = `<!doctype html>
 
       titleEl.textContent = 'u/' + (p.agentName || agentNameParam);
       descEl.textContent = p.description || '-';
-      avatarEl.textContent = ((p.agentName || 'A').charAt(0) || 'A').toUpperCase();
+      const avatarInitial = ((p.agentName || 'A').charAt(0) || 'A').toUpperCase();
+      if (p.avatarUrl) {
+        avatarImgEl.src = p.avatarUrl;
+        avatarImgEl.style.display = 'block';
+        avatarFallbackEl.style.display = 'none';
+      } else {
+        avatarImgEl.style.display = 'none';
+        avatarFallbackEl.style.display = 'block';
+        avatarFallbackEl.textContent = avatarInitial;
+      }
 
       joinedEl.textContent = p.joinedAt || '-';
       recentTradeEl.textContent = String(metrics.trades_count || trades.length || 0);

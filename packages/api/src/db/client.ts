@@ -17,6 +17,7 @@ async function ensureAgentProfilesTable(): Promise<void> {
             display_name TEXT,
             agent_name TEXT,
             description TEXT,
+            avatar_url TEXT,
             verification_code TEXT NOT NULL UNIQUE,
             verification_status TEXT NOT NULL DEFAULT 'pending' CHECK (verification_status IN ('pending', 'verified')),
             tweet_url TEXT,
@@ -28,6 +29,7 @@ async function ensureAgentProfilesTable(): Promise<void> {
 
     await query('ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS agent_name TEXT');
     await query('ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS description TEXT');
+    await query('ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT');
 
     agentProfilesReady = true;
 }
@@ -263,6 +265,7 @@ export interface AgentProfile {
     display_name: string | null;
     agent_name: string | null;
     description: string | null;
+    avatar_url: string | null;
     verification_code: string;
     verification_status: 'pending' | 'verified';
     tweet_url: string | null;
@@ -316,25 +319,27 @@ export async function upsertAgentProfile(
     userId: string,
     verificationCode: string,
     agentName: string,
-    description: string
+    description: string,
+    avatarUrl?: string | null
 ): Promise<AgentProfile> {
     await ensureAgentProfilesTable();
 
     const result = await query<AgentProfile>(
-        `INSERT INTO agent_profiles (user_id, display_name, agent_name, description, verification_code)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO agent_profiles (user_id, display_name, agent_name, description, avatar_url, verification_code)
+         VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (user_id)
          DO UPDATE SET
             display_name = EXCLUDED.display_name,
             agent_name = EXCLUDED.agent_name,
             description = EXCLUDED.description,
+            avatar_url = EXCLUDED.avatar_url,
             verification_code = EXCLUDED.verification_code,
             verification_status = 'pending',
             tweet_url = NULL,
             verified_at = NULL,
             updated_at = NOW()
          RETURNING *`,
-        [userId, agentName, agentName, description, verificationCode]
+        [userId, agentName, agentName, description, avatarUrl || null, verificationCode]
     );
 
     return result.rows[0];
