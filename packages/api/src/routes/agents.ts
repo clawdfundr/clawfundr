@@ -120,8 +120,11 @@ async function getXPublicMetrics(handle: string | null): Promise<XPublicMetrics 
         const fallbackEndpoint = `https://cdn.syndication.twimg.com/widgets/followbutton/info.json?screen_names=${encodeURIComponent(normalizedHandle)}`;
         const res = await fetch(fallbackEndpoint, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; ClawfundrBot/1.0; +https://clawfundr.xyz)',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                 Accept: 'application/json,text/plain,*/*',
+                'Accept-Language': 'en-US,en;q=0.9',
+                Referer: 'https://platform.twitter.com/',
+                Origin: 'https://platform.twitter.com',
             },
         });
         if (!res.ok) return null;

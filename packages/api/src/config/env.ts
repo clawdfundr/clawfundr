@@ -22,6 +22,10 @@ const envSchema = z.object({
     BASE_RPC_URL: z.string().url().default('https://mainnet.base.org'),
     BASESCAN_API_KEY: z.string().optional(),
 
+    // X / Twitter API (optional, used for real follower/following metrics)
+    X_BEARER_TOKEN: z.string().optional(),
+    TWITTER_BEARER_TOKEN: z.string().optional(),
+
     // Optional
     COINGECKO_API_KEY: z.string().optional(),
 
