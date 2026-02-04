@@ -925,6 +925,8 @@ const userProfileHtml = `<!doctype html>
     .trade-list { border:1px solid var(--line); background:rgba(6,10,14,.85); }
     .row { display:grid; grid-template-columns: 1fr 1.4fr 1fr 1fr; gap:8px; padding:8px 10px; border-bottom:1px solid rgba(255,214,10,.12); font-size:13px; }
     .row.head { position: sticky; top: 0; background: rgba(10, 15, 20, 0.95); color:#ffe69a; text-transform:uppercase; font-size:12px; }
+    .tx-link { color:#7dc8ff; text-decoration:none; border-bottom:1px dotted rgba(125,200,255,.45); }
+    .tx-link:hover { color:#b8e4ff; border-bottom-color:rgba(184,228,255,.75); }
     @media (max-width: 760px){ .row{grid-template-columns:1fr;} .row.head{display:none;} .profile-head{flex-direction:column;} }
   </style>
 </head>
@@ -971,7 +973,7 @@ const userProfileHtml = `<!doctype html>
     </section>
 
     <section class="panel">
-      <div class="section-title">Trades</div>
+      <div class="section-title">Recent Trades</div>
       <div id="trades" class="trade-list"></div>
     </section>
   </main>
@@ -1082,7 +1084,12 @@ const userProfileHtml = `<!doctype html>
         tradesEl.innerHTML = '<div class="row">No trades yet.</div>';
       } else {
         tradesEl.innerHTML = head + trades.map(function(t){
-          return '<div class="row"><div>' + esc(t.type||'-') + '</div><div>' + esc(t.hash||'-') + '</div><div>' + esc(t.token_in||'-') + ' ' + esc(t.amount_in||'') + '</div><div>' + esc(t.token_out||'-') + ' ' + esc(t.amount_out||'') + '</div></div>';
+          const hash = t.hash || '';
+          const txHref = /^0x[a-fA-F0-9]{64}$/.test(hash) ? ('https://basescan.org/tx/' + hash) : '';
+          const hashHtml = txHref
+            ? ('<a class="tx-link" href="' + txHref + '" target="_blank" rel="noopener noreferrer">' + esc(hash) + '</a>')
+            : esc(hash || '-');
+          return '<div class="row"><div>' + esc(t.type||'-') + '</div><div>' + hashHtml + '</div><div>' + esc(t.token_in||'-') + ' ' + esc(t.amount_in||'') + '</div><div>' + esc(t.token_out||'-') + ' ' + esc(t.amount_out||'') + '</div></div>';
         }).join('');
       }
 
