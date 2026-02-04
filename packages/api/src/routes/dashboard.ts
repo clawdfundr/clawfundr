@@ -3,8 +3,9 @@ import { readFile } from 'fs/promises';
 import { resolve } from 'path';
 
 const faviconLinks = `
-  <link rel="icon" type="image/png" href="/logo.png" />
-  <link rel="shortcut icon" type="image/png" href="/logo.png" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="shortcut icon" type="image/png" href="/favicon.png" />
+  <link rel="icon" type="image/png" href="https://api.clawfundr.xyz/logo.png" />
 `;
 
 const sharedStyles = `
