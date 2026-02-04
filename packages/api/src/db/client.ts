@@ -352,6 +352,19 @@ export interface AgentTradeItem {
     amount_out: string | null;
 }
 
+export interface AgentTradeLogInput {
+    hash: string;
+    chain_id?: number;
+    type: string;
+    token_in?: string | null;
+    token_out?: string | null;
+    amount_in?: string | null;
+    amount_out?: string | null;
+    counterparty?: string | null;
+    notes?: string | null;
+    decoded_json?: string | null;
+}
+
 export interface VerifiedAgentWithStats extends AgentProfile {
     trades_count: number;
     estimated_pnl: string;
@@ -718,6 +731,38 @@ export async function getAgentTrades(userId: string, limit: number = 20): Promis
     );
 
     return result.rows;
+}
+
+export async function logAgentTrade(userId: string, trade: AgentTradeLogInput): Promise<void> {
+    await query(
+        `INSERT INTO tx_decoded (
+            user_id, chain_id, hash, type, token_in, token_out, amount_in, amount_out, counterparty, notes, decoded_json
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        ON CONFLICT (user_id, chain_id, hash)
+        DO UPDATE SET
+            type = EXCLUDED.type,
+            token_in = EXCLUDED.token_in,
+            token_out = EXCLUDED.token_out,
+            amount_in = EXCLUDED.amount_in,
+            amount_out = EXCLUDED.amount_out,
+            counterparty = EXCLUDED.counterparty,
+            notes = EXCLUDED.notes,
+            decoded_json = EXCLUDED.decoded_json`,
+        [
+            userId,
+            trade.chain_id || 8453,
+            trade.hash,
+            trade.type,
+            trade.token_in || null,
+            trade.token_out || null,
+            trade.amount_in || null,
+            trade.amount_out || null,
+            trade.counterparty || null,
+            trade.notes || null,
+            trade.decoded_json || null,
+        ]
+    );
 }
 
 // ============================================================================

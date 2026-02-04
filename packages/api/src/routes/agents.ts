@@ -17,6 +17,7 @@ import {
     listFollowerAgents,
     listFollowingAgents,
     listVerifiedAgentsWithStats,
+    logAgentTrade,
     markAgentVerified,
     removeCopyTradeLink,
     saveAgentTweetUrl,
@@ -38,6 +39,19 @@ const copyTradeSchema = z.object({
     leaderUserId: z.string().uuid('leaderUserId must be a valid UUID'),
     mode: z.enum(['paper', 'live']).default('paper'),
     maxUsdPerTrade: z.number().positive().optional(),
+});
+
+const tradeLogSchema = z.object({
+    hash: z.string().min(8, 'hash is required'),
+    chainId: z.number().int().positive().optional(),
+    type: z.string().min(1).default('swap'),
+    tokenIn: z.string().optional().nullable(),
+    tokenOut: z.string().optional().nullable(),
+    amountIn: z.string().optional().nullable(),
+    amountOut: z.string().optional().nullable(),
+    counterparty: z.string().optional().nullable(),
+    notes: z.string().optional().nullable(),
+    decodedJson: z.string().optional().nullable(),
 });
 
 function getAgentName(profile: { agent_name: string | null; display_name: string | null }): string {
@@ -475,6 +489,45 @@ export async function agentRoutes(fastify: FastifyInstance) {
                 return (reply as any).status(500).send({
                     error: 'Internal Server Error',
                     message: 'Failed to load copy trade followers',
+                });
+            }
+        },
+    });
+
+    fastify.post('/v1/agents/trades', {
+        preHandler: fastify.auth([fastify.authenticate]),
+        handler: async (request, reply) => {
+            const userId = request.userId!;
+            const parsed = tradeLogSchema.safeParse(request.body || {});
+
+            if (!parsed.success) {
+                return (reply as any).status(400).send({
+                    error: 'Validation Error',
+                    message: parsed.error.errors[0].message,
+                });
+            }
+
+            try {
+                const data = parsed.data;
+                await logAgentTrade(userId, {
+                    hash: data.hash,
+                    chain_id: data.chainId || 8453,
+                    type: data.type || 'swap',
+                    token_in: data.tokenIn || null,
+                    token_out: data.tokenOut || null,
+                    amount_in: data.amountIn || null,
+                    amount_out: data.amountOut || null,
+                    counterparty: data.counterparty || null,
+                    notes: data.notes || null,
+                    decoded_json: data.decodedJson || null,
+                });
+
+                return reply.send({ success: true });
+            } catch (error) {
+                console.error('Error logging agent trade:', error);
+                return (reply as any).status(500).send({
+                    error: 'Internal Server Error',
+                    message: 'Failed to log agent trade',
                 });
             }
         },
