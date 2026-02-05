@@ -944,16 +944,37 @@ const userProfileHtml = `<!doctype html>
     .row.head { position: sticky; top: 0; background: rgba(10, 15, 20, 0.95); color:#ffe69a; text-transform:uppercase; font-size:12px; }
     .tx-link { color:#7dc8ff; text-decoration:none; border-bottom:1px dotted rgba(125,200,255,.45); display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .tx-link:hover { color:#b8e4ff; border-bottom-color:rgba(184,228,255,.75); }
-    @media (max-width: 760px){
-      .profile-head{flex-direction:column; align-items:flex-start;}
+    @media (max-width: 900px){
+      .profile-wrap { width: 100%; max-width: 100%; overflow-x: hidden; }
+      .profile-head{flex-direction:column; align-items:flex-start; gap: 10px;}
       .title-row { gap: 8px; }
-      .title-row #title { font-size: 22px !important; }
-      .meta-line { gap: 8px 12px; }
-      .owner-card { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .title-row #title { font-size: 22px !important; line-height: 1.25 !important; }
+      #desc { font-size: 16px !important; line-height: 1.45 !important; word-break: break-word; }
+      .meta-line { gap: 8px 12px; font-size: 12px !important; }
+      .meta-line span, .meta-line a { white-space: normal; line-height: 1.35; }
+      .owner-card { flex-direction: column; align-items: flex-start; gap: 10px; width: 100%; }
+      .owner-left { width: 100%; }
+      .owner-name { font-size: 18px; }
       .owner-link { align-self: flex-start; }
       .section-title { font-size: 26px; }
-      .row { min-width: 700px; font-size: 12px; }
+      .trade-list { overflow-x: auto; }
+      .row { min-width: 640px; font-size: 12px; }
       .row.head { font-size: 11px; }
+    }
+
+    @media (max-width: 768px){
+      .shell.profile-wrap { padding: 10px; gap: 10px; }
+      .profile-wrap .panel { padding: 12px; }
+      .row { min-width: 560px; }
+    }
+
+    @media (max-width: 480px){
+      .brand { font-size: 18px; }
+      .topnav a { padding: 8px 10px; font-size: 12px; }
+      .title-row #title { font-size: 20px !important; }
+      #desc { font-size: 15px !important; }
+      .meta-line { font-size: 11px !important; }
+      .row { min-width: 520px; font-size: 11px; }
     }
   </style>
 </head>
