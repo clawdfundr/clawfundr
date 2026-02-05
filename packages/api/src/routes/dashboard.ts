@@ -827,6 +827,17 @@ const usersHtml = `<!doctype html>
       return '<div class=\"avatar\">'+initial(label)+'</div>';
     }
     function esc(s){ return (s||'').replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+    function pick(obj, keys) {
+      for (const key of keys) {
+        if (obj && obj[key] !== undefined && obj[key] !== null && obj[key] !== '') return obj[key];
+      }
+      return '';
+    }
+    function shortHash(hash) {
+      const h = String(hash || '');
+      if (!/^0x[a-fA-F0-9]{64}$/.test(h)) return h || '-';
+      return h.slice(0, 10) + '....' + h.slice(-11);
+    }
     function parseNum(v){ const n = Number(v); return Number.isFinite(n) ? n : 0; }
     function fmtPnl(v){ const n=parseNum(v); const sign=n>=0?'+':''; return sign + n.toFixed(2); }
     function setStatus(message, isError){
@@ -922,12 +933,25 @@ const userProfileHtml = `<!doctype html>
     .owner-metrics a:hover { color:#fff3c8; border-bottom-color:rgba(255,214,10,.68); }
     .owner-link { color:#cce8ff; text-decoration:none; border:1px solid var(--line); padding:6px 8px; font-size:12px; }
     .section-title { font-size:32px; margin:2px 0 8px; color:#fff3c8; }
-    .trade-list { border:1px solid var(--line); background:rgba(6,10,14,.85); }
-    .row { display:grid; grid-template-columns: 1fr 1.4fr 1fr 1fr; gap:8px; padding:8px 10px; border-bottom:1px solid rgba(255,214,10,.12); font-size:13px; }
+    .trade-list { border:1px solid var(--line); background:rgba(6,10,14,.85); overflow-x:auto; -webkit-overflow-scrolling: touch; }
+    .trade-list::-webkit-scrollbar { height: 8px; width: 8px; }
+    .trade-list::-webkit-scrollbar-thumb { background: rgba(255,214,10,.35); }
+    .trade-list::-webkit-scrollbar-track { background: rgba(5,8,12,.55); }
+    .row { display:grid; grid-template-columns: 110px minmax(260px, 1.6fr) minmax(170px, 1fr) minmax(170px, 1fr); gap:10px; padding:8px 10px; border-bottom:1px solid rgba(255,214,10,.12); font-size:13px; min-width:760px; align-items:center; }
     .row.head { position: sticky; top: 0; background: rgba(10, 15, 20, 0.95); color:#ffe69a; text-transform:uppercase; font-size:12px; }
-    .tx-link { color:#7dc8ff; text-decoration:none; border-bottom:1px dotted rgba(125,200,255,.45); }
+    .tx-link { color:#7dc8ff; text-decoration:none; border-bottom:1px dotted rgba(125,200,255,.45); display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .tx-link:hover { color:#b8e4ff; border-bottom-color:rgba(184,228,255,.75); }
-    @media (max-width: 760px){ .row{grid-template-columns:1fr;} .row.head{display:none;} .profile-head{flex-direction:column;} }
+    @media (max-width: 760px){
+      .profile-head{flex-direction:column; align-items:flex-start;}
+      .title-row { gap: 8px; }
+      .title-row #title { font-size: 22px !important; }
+      .meta-line { gap: 8px 12px; }
+      .owner-card { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .owner-link { align-self: flex-start; }
+      .section-title { font-size: 26px; }
+      .row { min-width: 700px; font-size: 12px; }
+      .row.head { font-size: 11px; }
+    }
   </style>
 </head>
 <body>
@@ -1010,6 +1034,17 @@ const userProfileHtml = `<!doctype html>
     const tradesEl = document.getElementById('trades');
 
     function esc(s){ return (s||'').replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+    function pick(obj, keys) {
+      for (const key of keys) {
+        if (obj && obj[key] !== undefined && obj[key] !== null && obj[key] !== '') return obj[key];
+      }
+      return '';
+    }
+    function shortHash(hash) {
+      const h = String(hash || '');
+      if (!/^0x[a-fA-F0-9]{64}$/.test(h)) return h || '-';
+      return h.slice(0, 10) + '....' + h.slice(-11);
+    }
     function req(path){
       return fetch(path).then(async function(r){
         const t=await r.text(); let b=null; try{b=t?JSON.parse(t):null}catch(_e){}
@@ -1084,12 +1119,16 @@ const userProfileHtml = `<!doctype html>
         tradesEl.innerHTML = '<div class="row">No trades yet.</div>';
       } else {
         tradesEl.innerHTML = head + trades.map(function(t){
-          const hash = t.hash || '';
+          const hash = String(pick(t, ['hash', 'tx_hash', 'txHash', 'transaction_hash', 'transactionHash']) || '');
           const txHref = /^0x[a-fA-F0-9]{64}$/.test(hash) ? ('https://basescan.org/tx/' + hash) : '';
           const hashHtml = txHref
-            ? ('<a class="tx-link" href="' + txHref + '" target="_blank" rel="noopener noreferrer">' + esc(hash) + '</a>')
+            ? ('<a class="tx-link" href="' + txHref + '" target="_blank" rel="noopener noreferrer">' + esc(shortHash(hash)) + '</a>')
             : esc(hash || '-');
-          return '<div class="row"><div>' + esc(t.type||'-') + '</div><div>' + hashHtml + '</div><div>' + esc(t.token_in||'-') + ' ' + esc(t.amount_in||'') + '</div><div>' + esc(t.token_out||'-') + ' ' + esc(t.amount_out||'') + '</div></div>';
+          const tokenIn = String(pick(t, ['token_in', 'tokenIn', 'from_token', 'fromToken']) || '-').toUpperCase();
+          const tokenOut = String(pick(t, ['token_out', 'tokenOut', 'to_token', 'toToken']) || '-').toUpperCase();
+          const amountIn = pick(t, ['amount_in', 'amountIn']);
+          const amountOut = pick(t, ['amount_out', 'amountOut']);
+          return '<div class="row"><div>' + esc(t.type||'-') + '</div><div>' + hashHtml + '</div><div>' + esc(tokenIn) + ' ' + esc(amountIn||'') + '</div><div>' + esc(tokenOut) + ' ' + esc(amountOut||'') + '</div></div>';
         }).join('');
       }
 
@@ -1132,3 +1171,4 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
         reply.type('text/html').send(userProfileHtml);
     });
 }
+
