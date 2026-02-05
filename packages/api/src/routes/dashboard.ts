@@ -910,7 +910,9 @@ const userProfileHtml = `<!doctype html>
   ${faviconLinks}
   ${sharedStyles}
   <style>
-    .profile-wrap { width: 100%; margin: 0; }
+    .profile-wrap { width: 100%; max-width: 100%; margin: 0; overflow-x: hidden; }
+    .profile-wrap .panel { max-width: 100%; min-width: 0; }
+    .profile-head > div { min-width: 0; }
     .profile-head { display:flex; gap:12px; align-items:flex-start; }
     .avatar { width:66px; height:66px; display:grid;border: 3px solid var(--line);border-radius: 50%;place-items:center; font-size:26px; font-weight:700; color:#ffe9a6; overflow:hidden; position:relative; }
     .avatar img { width:100%; height:100%; object-fit:cover; display:block; }
@@ -930,7 +932,7 @@ const userProfileHtml = `<!doctype html>
     .owner-avatar img { width:100%; height:100%; object-fit:cover; display:block; }
     .owner-avatar .fallback { font-size:18px; }
     .owner-name { font-size:22px; color:#fff3c8; }
-    .owner-handle { font-size:13px; color:#7dc8ff; }
+    .owner-handle { font-size:13px; color:#7dc8ff; overflow-wrap:anywhere; }
     .owner-metrics { margin-top:6px; display:flex; gap:12px; flex-wrap:wrap; }
     .owner-metrics a { color:#d7e2ef; text-decoration:none; border-bottom:1px dotted rgba(255,214,10,.28); }
     .owner-metrics a:hover { color:#fff3c8; border-bottom-color:rgba(255,214,10,.68); }
@@ -949,23 +951,25 @@ const userProfileHtml = `<!doctype html>
       .profile-head{flex-direction:column; align-items:flex-start; gap: 10px;}
       .title-row { gap: 8px; }
       .title-row #title { font-size: 22px !important; line-height: 1.25 !important; }
-      #desc { font-size: 16px !important; line-height: 1.45 !important; word-break: break-word; }
-      .meta-line { gap: 8px 12px; font-size: 12px !important; }
-      .meta-line span, .meta-line a { white-space: normal; line-height: 1.35; }
+      #desc { font-size: 16px !important; line-height: 1.45 !important; word-break: break-word; overflow-wrap:anywhere; }
+      .meta-line { gap: 8px 10px; font-size: 12px !important; }
+      .meta-line span, .meta-line a { white-space: normal; line-height: 1.35; overflow-wrap:anywhere; }
       .owner-card { flex-direction: column; align-items: flex-start; gap: 10px; width: 100%; }
-      .owner-left { width: 100%; }
-      .owner-name { font-size: 18px; }
+      .owner-left { width: 100%; min-width: 0; }
+      .owner-name { font-size: 18px; overflow-wrap:anywhere; }
       .owner-link { align-self: flex-start; }
       .section-title { font-size: 26px; }
       .trade-list { overflow-x: auto; }
-      .row { min-width: 640px; font-size: 12px; }
+      .row { min-width: 0; font-size: 12px; grid-template-columns: 72px 160px minmax(120px,1fr) minmax(120px,1fr); }
+      .row > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .row.head { font-size: 11px; }
     }
 
     @media (max-width: 768px){
       .shell.profile-wrap { padding: 10px; gap: 10px; }
       .profile-wrap .panel { padding: 12px; }
-      .row { min-width: 560px; }
+      .meta-line { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .row { grid-template-columns: 64px 145px minmax(110px,1fr) minmax(110px,1fr); font-size: 11px; }
     }
 
     @media (max-width: 480px){
@@ -973,8 +977,8 @@ const userProfileHtml = `<!doctype html>
       .topnav a { padding: 8px 10px; font-size: 12px; }
       .title-row #title { font-size: 20px !important; }
       #desc { font-size: 15px !important; }
-      .meta-line { font-size: 11px !important; }
-      .row { min-width: 520px; font-size: 11px; }
+      .meta-line { font-size: 11px !important; grid-template-columns: 1fr 1fr; }
+      .row { grid-template-columns: 58px 130px minmax(95px,1fr) minmax(95px,1fr); font-size: 10px; }
     }
   </style>
 </head>
@@ -1096,7 +1100,12 @@ const userProfileHtml = `<!doctype html>
         avatarFallbackEl.textContent = avatarInitial;
       }
 
-      joinedEl.textContent = p.joinedAt || '-';
+      if (p.joinedAt) {
+        const d = new Date(p.joinedAt);
+        joinedEl.textContent = Number.isNaN(d.getTime()) ? p.joinedAt : d.toISOString().slice(0, 10);
+      } else {
+        joinedEl.textContent = '-';
+      }
       recentTradeEl.textContent = String(metrics.trades_count || trades.length || 0);
       copyTradeEl.textContent = '0';
       const agentFollowers = Number(p.agentFollowers ?? 0);
